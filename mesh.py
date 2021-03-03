@@ -1,4 +1,5 @@
 import random
+from parametrization import Circle, UnitInterval, UnitSquare, LShape, PiecewiseParametrization
 
 
 class Vertex:
@@ -50,8 +51,9 @@ class Edge:
 
             # Update neighbouring relations between edges.
             if self.nbr_edge and self.nbr_edge.children:
-                #assert self.vertices[0] == self.nbr_edge.vertices[1]
-                #assert self.vertices[1] == self.nbr_edge.vertices[0]
+                if not self.glued:
+                    assert self.vertices[0] == self.nbr_edge.vertices[1]
+                    assert self.vertices[1] == self.nbr_edge.vertices[0]
                 assert not self.nbr_edge.children[0].nbr_edge
                 assert not self.nbr_edge.children[1].nbr_edge
 
@@ -89,8 +91,14 @@ class Element:
         self.edges = edges
         self.levels = levels
         self.vertices = [edge.vertices[0] for edge in edges]
-        self.parent = None
+        self.parent = parent
         self.children = []
+
+        if parent:
+            self.gamma_space = parent.gamma_space
+        else:
+            self.gamma_space = None
+        #print('Create elem with vertices {}'.format(self.vertices))
 
         # Register ourselves in the edges.
         for edge in edges:
@@ -123,32 +131,47 @@ class Element:
 
 
 class Mesh:
-    def __init__(self, glue_space=False):
-        self.vertices = [
-            Vertex(t=0., x=0., idx=0),
-            Vertex(t=0., x=1., idx=1),
-            Vertex(t=1., x=1., idx=2),
-            Vertex(t=1., x=0., idx=3),
-        ]
+    def __init__(self, glue_space=False, initial_space_mesh=[0., 1.]):
+        # Generate all vertices on both time boundaries.
+        vertices = []
+        for i, x in enumerate(initial_space_mesh):
+            vertices.extend([
+                Vertex(t=0., x=x, idx=2 * i),
+                Vertex(t=1., x=x, idx=2 * i + 1)
+            ])
 
-        root_edges = [
-            Edge(vertices=(self.vertices[i], self.vertices[(i + 1) % 4]),
-                 parent=None) for i in range(4)
-        ]
+        # Generate all the necessary elements + edges.
+        roots = []
+        for i in range(len(initial_space_mesh) - 1):
+            # Create four edges and the element.
+            e1 = Edge(vertices=(vertices[2 * i], vertices[2 * i + 2]))
+            e2 = Edge(vertices=(vertices[2 * i + 2], vertices[2 * i + 3]))
+            e3 = Edge(vertices=(vertices[2 * i + 3], vertices[2 * i + 1]))
+            e4 = Edge(vertices=(vertices[2 * i + 1], vertices[2 * i]))
+            roots.append(Element(edges=[e1, e2, e3, e4], levels=(0, 0)))
 
-        for edge in root_edges:
-            edge.on_boundary = True
+            # Set boundary edges correctly.
+            e1.on_boundary = True
+            e3.on_boundary = True
+            if (i == 0): e4.on_boundary = True
+            if (i + 2 == len(initial_space_mesh)): e2.on_boundary = True
 
-        # Glue edges 1 and 3 together.
+            # Set the middle edge nbrs correctly.
+            if i > 0:
+                roots[i - 1].edges[1].nbr_edge = roots[i].edges[3]
+                roots[i].edges[3].nbr_edge = roots[i - 1].edges[1]
+
+        # Glue the outside time edges in case we have a closed manifold.
         if glue_space:
-            root_edges[1].glued = True
-            root_edges[3].glued = True
+            roots[0].edges[3].glued = True
+            roots[-1].edges[1].glued = True
 
-            root_edges[1].nbr_edge = root_edges[3]
-            root_edges[3].nbr_edge = root_edges[1]
+            roots[0].edges[3].nbr_edge = roots[-1].edges[1]
+            roots[-1].edges[1].nbr_edge = roots[0].edges[3]
 
-        self.root = Element(root_edges, levels=(0, 0))
-        self.leaf_elements = set([self.root])
+        self.vertices = vertices
+        self.roots = roots
+        self.leaf_elements = set(roots)
 
     def __bisect_edge(self, edge):
         """ Bisects edge and returns the vertex in the middle of edge. """
@@ -204,10 +227,12 @@ class Mesh:
             # Refining in time
             child1 = Element(edges=(edges[0], edges[1].children[0], e1,
                                     edges[3].children[1]),
-                             levels=(elem.level_time + 1, elem.level_space))
+                             levels=(elem.level_time + 1, elem.level_space),
+                             parent=elem)
             child2 = Element(edges=(e2, edges[1].children[1], edges[2],
                                     edges[3].children[0]),
-                             levels=(elem.level_time + 1, elem.level_space))
+                             levels=(elem.level_time + 1, elem.level_space),
+                             parent=elem)
         else:
             # Refining in space
             child1 = Element(edges=(edges[0].children[0], e1,
@@ -222,8 +247,6 @@ class Mesh:
         self.leaf_elements.add(child1)
         self.leaf_elements.add(child2)
 
-        child1.parent = elem
-        child2.parent = elem
         elem.children = (child1, child2)
         return elem.children
 
@@ -244,12 +267,19 @@ class Mesh:
         for elem in leaves:
             self.refine(elem)
 
-    def gmsh(self):
+    def gmsh(self, use_gamma=False):
         """Returns the (leaf) grid in gmsh format."""
         result = "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n$Nodes\n{}\n".format(
             len(self.vertices))
-        for vertex in self.vertices:
-            result += "{} {} {} 0\n".format(vertex.idx + 1, vertex.x, vertex.t)
+        if not use_gamma:
+            for vertex in self.vertices:
+                result += "{} {} {} 0\n".format(vertex.idx + 1, vertex.t,
+                                                vertex.x)
+        else:
+            for vertex in self.vertices:
+                x, y = self.gamma_space.eval(vertex.x)[:, 0]
+                result += "{} {} {} {}\n".format(vertex.idx + 1, vertex.t, x,
+                                                 y)
         result += "$EndNodes\n$Elements\n{}\n".format(len(self.leaf_elements))
         for idx, element in enumerate(self.leaf_elements):
             result += "{} 3 2 0 0 {} {} {} {}\n".format(
@@ -260,10 +290,30 @@ class Mesh:
         return result
 
 
+class MeshParametrized(Mesh):
+    def __init__(self, gamma_space):
+        assert isinstance(gamma_space, PiecewiseParametrization)
+        super().__init__(glue_space=gamma_space.closed,
+                         initial_space_mesh=gamma_space.pw_start)
+        self.gamma_space = gamma_space
+        for i in range(len(self.roots)):
+            self.roots[i].gamma_space = gamma_space.pw_gamma[i]
+            assert self.roots[i].vertices[0].x == gamma_space.pw_start[i]
+            assert self.roots[i].vertices[1].x == gamma_space.pw_start[i + 1]
+
+
 if __name__ == "__main__":
-    mesh = Mesh(glue_space=True)
-    random.seed(5)
-    for _ in range(20):
-        elem = random.choice(list(mesh.leaf_elements))
-        mesh.refine_axis(elem, random.random() < 0.5)
+    #mesh = Mesh(glue_space=True)
+    #random.seed(5)
+    #for _ in range(20):
+    #    elem = random.choice(list(mesh.leaf_elements))
+    #    mesh.refine_axis(elem, random.random() < 0.5)
+    mesh = MeshParametrized(Circle())
+    #mesh.uniform_refine()
+    #mesh.uniform_refine()
+    #mesh.uniform_refine()
+    #random.seed(5)
+    #for _ in range(20):
+    #    elem = random.choice(list(mesh.leaf_elements))
+    #    mesh.refine_axis(elem, random.random() < 0.5)
     print(mesh.gmsh())

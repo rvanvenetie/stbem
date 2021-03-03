@@ -63,8 +63,8 @@ class PiecewiseParametrization:
         pts = self.eval(
             np.linspace(0, self.gamma_length,
                         int(self.gamma_length) * 10 + 1))
+        plt.figure()
         plt.plot(pts[0, :], pts[1, :])
-        plt.show()
 
 
 class PiecewisePolygon(PiecewiseParametrization):
@@ -72,6 +72,9 @@ class PiecewisePolygon(PiecewiseParametrization):
         for vertex in vertices:
             assert len(vertex) == 2
         assert np.all(vertices[0] == vertices[-1])
+
+        # Store vertices.
+        self.vertices = vertices
 
         # Create piecewise functions.
         pw_start = [0]
@@ -159,3 +162,5 @@ if __name__ == "__main__":
     # L-shape.
     gamma = LShape()
     gamma.plot()
+
+    plt.show()
