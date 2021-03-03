@@ -262,26 +262,8 @@ class Mesh:
 
 if __name__ == "__main__":
     mesh = Mesh(glue_space=True)
-    #random.seed(5)
-    #for _ in range(20):
-    #    elem = random.choice(list(mesh.leaf_elements))
-    #    mesh.refine_axis(elem, random.random() < 0.5)
-    #mesh.uniform_refine()
-    #for k in range(8):
-    #    for elem in list(mesh.leaf_elements):
-    #        if elem.vertices[0].tx == (0, 0):
-    #            mesh.refine(elem)
-    #            break
-
-    #mesh.uniform_refine()
-    for k in range(8):
-        for elem in list(mesh.leaf_elements):
-            if elem.vertices[0].tx == (0, 0):
-                mesh.refine_space(elem)
-                break
-    #for k in range(8):
-    #    for elem in list(mesh.leaf_elements):
-    #        if elem.vertices[0].tx == (0, 0):
-    #            mesh.refine_time(elem)
-    #            break
+    random.seed(5)
+    for _ in range(20):
+        elem = random.choice(list(mesh.leaf_elements))
+        mesh.refine_axis(elem, random.random() < 0.5)
     print(mesh.gmsh())
