@@ -88,13 +88,10 @@ def test_locally_uniform():
     for glue_space in [True, False]:
         mesh = Mesh(glue_space=glue_space)
         random.seed(5)
-        #for _ in range(100):
-        #    elem = random.choice(list(mesh.leaf_elements))
-        #    mesh.refine_axis(elem, random.random() < 0.5)
+        for _ in range(100):
+            elem = random.choice(list(mesh.leaf_elements))
+            mesh.refine_axis(elem, random.random() < 0.5)
 
-        c, _ = mesh.refine_time(mesh.root)
-        for k in range(5):
-            _, c = mesh.refine_time(c)
         leaves = list(mesh.leaf_elements)
         for elem in leaves:
             for edge in elem.edges:
