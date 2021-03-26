@@ -5,7 +5,6 @@ from parametrization import Circle, UnitSquare, LShape
 import quadpy
 from mesh import Mesh, MeshParametrized
 import itertools
-import matplotlib.pyplot as plt
 from scipy.special import expi, erf, expn, erfc
 from quadrature import log_quadrature_scheme, gauss_quadrature_scheme, ProductScheme2D, DuffyScheme2D
 from single_layer import SingleLayerOperator

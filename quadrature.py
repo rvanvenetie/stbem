@@ -1,6 +1,5 @@
 import numpy as np
 from parametrization import circle
-import tanh_sinh
 from scipy.special import expi
 from quadrature_rules import log_quadrature_rule, sqrt_quadrature_rule, sqrtinv_quadrature_rule, gauss_sqrtinv_quadrature_rule, gauss_x_quadrature_rule
 

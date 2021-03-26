@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 # Simple parametrizations.
@@ -66,6 +65,7 @@ class PiecewiseParametrization:
         return np.select(condlist, pw_eval)
 
     def plot(self):
+        import matplotlib.pyplot as plt
         # Evaluate gamma on a set of points and plot.
         pts = self.eval(
             np.linspace(0, self.gamma_length,
