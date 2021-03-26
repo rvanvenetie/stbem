@@ -1,7 +1,6 @@
 import numpy as np
 import random
 from parametrization import Circle, UnitSquare, LShape
-import quadpy
 from mesh import Mesh, MeshParametrized
 import itertools
 from scipy.special import expi, erf, expn, erfc

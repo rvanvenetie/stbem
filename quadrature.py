@@ -1,6 +1,5 @@
 import numpy as np
 from parametrization import circle
-from scipy.special import expi
 from quadrature_rules import log_quadrature_rule, sqrt_quadrature_rule, sqrtinv_quadrature_rule, gauss_sqrtinv_quadrature_rule, gauss_x_quadrature_rule
 
 
@@ -129,6 +128,7 @@ class DuffyScheme2D(QuadScheme2D):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    from scipy.special import expi
 
     for N in range(13):
         scheme = gauss_quadrature_scheme(N * 2 + 1)
