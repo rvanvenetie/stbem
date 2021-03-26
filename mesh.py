@@ -1,4 +1,5 @@
 import random
+from collections import OrderedDict
 from parametrization import Circle, UnitInterval, UnitSquare, LShape, PiecewiseParametrization
 
 
@@ -97,6 +98,7 @@ class Element:
         if parent:
             self.gamma_space = parent.gamma_space
         else:
+            assert levels == (0, 0)
             self.gamma_space = None
         #print('Create elem with vertices {}'.format(self.vertices))
 
@@ -113,6 +115,26 @@ class Element:
         assert self.vertices[1].x == self.vertices[2].x
         assert self.vertices[2].t == self.vertices[3].t
         assert self.vertices[3].x == self.vertices[0].x
+        assert self.vertices[0].t < self.vertices[2].t
+        assert self.vertices[0].x < self.vertices[1].x
+
+        self.center = Vertex(t=0.5 * (self.vertices[0].t + self.vertices[2].t),
+                             x=0.5 * (self.vertices[0].x + self.vertices[1].x),
+                             idx=-1)
+
+    def dist(self, other):
+        """ Calculates the distance in the embedded space. """
+        assert self.gamma_space and other.gamma_space
+        return np.linalg.norm(
+            self.gamma_space(self.center) - other.gamma_space(other.center))
+
+    @property
+    def time_interval(self):
+        return self.vertices[0].t, self.vertices[2].t
+
+    @property
+    def space_interval(self):
+        return self.vertices[0].x, self.vertices[1].x
 
     @property
     def level_time(self):
@@ -127,11 +149,14 @@ class Element:
         return (self.edges[1 - ax], self.edges[3 - ax])
 
     def __repr__(self):
-        return "Elem{}".format(self.vertices)
+        return "Elem(t={}, x={})".format(self.time_interval,
+                                         self.space_interval)
 
 
 class Mesh:
     def __init__(self, glue_space=False, initial_space_mesh=[0., 1.]):
+        self.glue_space = glue_space
+
         # Generate all vertices on both time boundaries.
         vertices = []
         for i, x in enumerate(initial_space_mesh):
@@ -171,7 +196,7 @@ class Mesh:
 
         self.vertices = vertices
         self.roots = roots
-        self.leaf_elements = set(roots)
+        self.leaf_elements = OrderedDict.fromkeys(roots)
 
     def __bisect_edge(self, edge):
         """ Bisects edge and returns the vertex in the middle of edge. """
@@ -237,15 +262,17 @@ class Mesh:
             # Refining in space
             child1 = Element(edges=(edges[0].children[0], e1,
                                     edges[2].children[1], edges[3]),
-                             levels=(elem.level_time, elem.level_space + 1))
+                             levels=(elem.level_time, elem.level_space + 1),
+                             parent=elem)
             child2 = Element(edges=(edges[0].children[1], edges[1],
                                     edges[2].children[0], e2),
-                             levels=(elem.level_time, elem.level_space + 1))
+                             levels=(elem.level_time, elem.level_space + 1),
+                             parent=elem)
 
         # Update datastructures with new elements.
-        self.leaf_elements.remove(elem)
-        self.leaf_elements.add(child1)
-        self.leaf_elements.add(child2)
+        self.leaf_elements.pop(elem)
+        self.leaf_elements.setdefault(child1)
+        self.leaf_elements.setdefault(child2)
 
         elem.children = (child1, child2)
         return elem.children
@@ -266,6 +293,11 @@ class Mesh:
         leaves = list(self.leaf_elements)
         for elem in leaves:
             self.refine(elem)
+
+    def uniform_refine_space(self):
+        leaves = list(self.leaf_elements)
+        for elem in leaves:
+            self.refine_space(elem)
 
     def gmsh(self, use_gamma=False):
         """Returns the (leaf) grid in gmsh format."""
@@ -300,6 +332,14 @@ class MeshParametrized(Mesh):
             self.roots[i].gamma_space = gamma_space.pw_gamma[i]
             assert self.roots[i].vertices[0].x == gamma_space.pw_start[i]
             assert self.roots[i].vertices[1].x == gamma_space.pw_start[i + 1]
+
+        # Ensure that the initial space consists at least of three elements.
+        if self.glue_space and len(self.roots) < 3:
+            for elem in self.roots:
+                self.refine_space(elem)
+            leaves = list(self.leaf_elements)
+            for elem in leaves:
+                self.refine_space(elem)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
-from mesh import Mesh
+from mesh import Mesh, MeshParametrized
+import numpy as np
 from itertools import product
 import random
+from parametrization import Circle, UnitSquare, LShape
 
 
 def test_initial_mesh():
@@ -186,3 +188,21 @@ def test_boundaries():
                 else:
                     assert not edge.on_boundary and not edge.glued
                     assert len(edge.neighbour_elements()) > 0
+
+
+def test_parametrized():
+    for gamma in [Circle(), UnitSquare(), LShape()]:
+        mesh = MeshParametrized(gamma)
+        assert len(mesh.roots) == len(gamma.pw_gamma)
+        assert len(mesh.leaf_elements) >= 3
+        random.seed(5)
+        for _ in range(100):
+            elem = random.choice(list(mesh.leaf_elements))
+            mesh.refine_axis(elem, random.random() < 0.5)
+
+        leaves = list(mesh.leaf_elements)
+        for elem in leaves:
+            assert elem.gamma_space is not None
+            assert np.all(
+                gamma.eval(elem.vertices[0].x) == elem.gamma_space(
+                    elem.vertices[0].x))
