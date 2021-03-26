@@ -4,10 +4,17 @@ import matplotlib.pyplot as plt
 
 # Simple parametrizations.
 def circle(x_hat):
+    """ Simple circle parametrization. """
     return np.vstack([np.cos(x_hat), np.sin(x_hat)])
 
 
+def circle_project(x):
+    """ Finds t that minimized |circle(t) - x|_2. """
+    return np.atan(x[1] / x[0])
+
+
 def line(a, b, t_start=0):
+    """ Returns parametrization of the segment from a to b. """
     norm = np.linalg.norm(b - a)
     direct = (b - a) / norm
 
@@ -117,6 +124,9 @@ class Circle(PiecewiseParametrization):
 
         # Invoke parent.
         super().__init__(pw_start=pw_start, pw_gamma=pw_gamma)
+
+    def project(self, x):
+        """ Projects the vector x onto the surface and returns the params. """
 
 
 class UnitSquare(PiecewisePolygon):
