@@ -10,10 +10,10 @@ from quadrature import log_quadrature_scheme, gauss_quadrature_scheme, ProductSc
 from single_layer import SingleLayerOperator
 
 
-def l2(f, N_poly):
+def l2(f):
     """ Evaluates l2 norm over S^1 x [0, 1]. """
-    circle_quad = quadpy.s2.get_good_scheme(N_poly)
-    line_quad = gauss_quadrature_scheme(N_poly)
+    circle_quad = quadpy.s2.get_good_scheme(10)
+    line_quad = gauss_quadrature_scheme(23)
     fx = np.zeros(len(line_quad.points))
     for i, t in enumerate(line_quad.points):
         assert 0 <= t <= 1
@@ -103,7 +103,7 @@ for _ in range(10):
 
     # Calculate l2 error
     time_l2_begin = time.time()
-    val_l2 = l2(err, 17)
+    val_l2 = l2(err)
     print('Calculating l2 error took {}s'.format(time.time() - time_l2_begin))
     err_l2.append(val_l2)
     print('N={}\terr_l2={}'.format(N, val_l2))

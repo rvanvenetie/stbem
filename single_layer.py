@@ -65,8 +65,7 @@ def double_time_integrated_kernel(a, b, c, d):
 
 class SingleLayerOperator:
     def __init__(self, mesh, quad_order=12):
-        self.gauss_scheme = gauss_quadrature_scheme(quad_order +
-                                                    (quad_order + 1) % 2)
+        self.gauss_scheme = gauss_quadrature_scheme(23)
         self.log_scheme = log_quadrature_scheme(quad_order, quad_order)
         self.log_log = ProductScheme2D(self.log_scheme, self.log_scheme)
         self.duff_log_log = DuffyScheme2D(self.log_log, symmetric=False)
