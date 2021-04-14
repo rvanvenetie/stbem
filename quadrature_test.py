@@ -1,6 +1,6 @@
-from quadrature import log_quadrature_scheme, gauss_quadrature_scheme, sqrt_quadrature_scheme, gauss_sqrtinv_quadrature_scheme, ProductScheme2D, DuffyScheme2D, gauss_x_quadrature_scheme
+from quadrature import log_quadrature_scheme, gauss_quadrature_scheme, sqrt_quadrature_scheme, gauss_sqrtinv_quadrature_scheme, ProductScheme2D, DuffyScheme2D, gauss_x_quadrature_scheme, DuffySchemeIdentical3D, ProductScheme3D, DuffySchemeTouch3D
 from parametrization import circle, UnitSquare
-from scipy.special import expi
+from scipy.special import expi, exp1
 import quadrature_rules
 import itertools
 from pytest import approx
@@ -327,3 +327,176 @@ def test_singular_quadrature_corner():
         assert new_rel_error < rel_error or new_rel_error < 1e-15
         rel_error = new_rel_error
     assert rel_error < 1e-12
+
+
+def test_singular_duffy_3d_id():
+    b = 0.25
+    G_time = lambda xy: 1. / (4 * np.pi) * exp1(xy / (4 * b))
+
+    # Test with u0 = 1.
+    u0 = lambda y: np.ones(y.shape[1])
+
+    h = 1
+    f = lambda xyz: u0(xyz) * G_time(h**2 * ((xyz[0] - xyz[1])**2 + xyz[2]**2))
+    val_exact = 0.075961144077555044645
+    rel_error = 1
+    for n in range(2, 13):
+        scheme = log_quadrature_scheme(n, n)
+        duff_scheme = DuffySchemeIdentical3D(ProductScheme3D(scheme),
+                                             symmetric_xy=False)
+        q_f = duff_scheme.integrate(f, 0, 1, 0, 1, 0, 1)
+        new_rel_error = abs((q_f - val_exact) / val_exact)
+        print(n, new_rel_error)
+        assert new_rel_error < rel_error or new_rel_error < 1e-12
+        rel_error = new_rel_error
+    assert rel_error < 1e-12
+
+    h = 0.25
+    f = lambda xyz: u0(xyz) * G_time(h**2 * ((xyz[0] - xyz[1])**2 + xyz[2]**2))
+    val_exact = 0.0041485131062119699490
+    rel_error = 1
+    for n in range(2, 13):
+        scheme = log_quadrature_scheme(n, n)
+        duff_scheme = DuffySchemeIdentical3D(ProductScheme3D(scheme),
+                                             symmetric_xy=True)
+        q_f = h**3 * duff_scheme.integrate(f, 0, 1, 0, 1, 0, 1)
+        new_rel_error = abs((q_f - val_exact) / val_exact)
+        print(n, new_rel_error)
+        assert new_rel_error < rel_error or new_rel_error < 1e-12
+        rel_error = new_rel_error
+
+    assert rel_error < 1e-12
+
+    # Test with u0 = sin(x) * y
+    u0 = lambda xy: np.sin(xy[0]) * xy[1]
+
+    h = 0.25
+    vertices = [(1, 1), (1 - h, 1), (1, 1 - h), (1 - h, 1 - h)]
+    v0, v1, v2 = [np.array(vtx).reshape(-1, 1) for vtx in vertices][0:3]
+
+    # Make parametrization of the element Q.
+    gamma_Q = lambda x, z: v0 + (v1 - v0) * x + (v2 - v0) * z
+    gamma_K = lambda y: v0 + (v1 - v0) * y
+    assert np.all(gamma_K(0) == v0)
+    assert np.all(gamma_K(1) == v1)
+    assert np.all(gamma_Q(0.5, 0) == gamma_K(0.5))
+    assert not np.all(gamma_Q(0.5, 1) == gamma_K(0.5))
+
+    #def f(xyz):
+    #    x, y, z = xyz
+    #    return u0(gamma_Q(x, z)) * G_time(
+    #        np.sum((gamma_Q(x, z) - gamma_Q(y, 0))**2, axis=0))
+    f = lambda xyz: u0(gamma_Q(xyz[0], xyz[2])) * G_time(h**2 * (
+        (xyz[0] - xyz[1])**2 + xyz[2]**2))
+
+    val_exact = 0.0028374980621858479108
+    rel_error = 1
+    for n in range(4, 12):
+        scheme = log_quadrature_scheme(n, n)
+        duff_scheme = DuffySchemeIdentical3D(ProductScheme3D(scheme),
+                                             symmetric_xy=False)
+        fx = f(duff_scheme.points)
+        q_f = h**3 * np.dot(fx, duff_scheme.weights)
+        new_rel_error = abs((q_f - val_exact) / val_exact)
+        print(n, new_rel_error)
+        assert new_rel_error < rel_error or new_rel_error < 1e-12
+        rel_error = new_rel_error
+
+    assert rel_error < 1e-12
+
+
+def test_singular_duffy_3d_touch():
+    # Test the touch quadrature rule.
+    f = lambda xyz: np.log((xyz[0] + xyz[1])**2 + xyz[2]**2)
+    val_exact = 0.1781673429530223041202893120098701898314
+    rel_error = 1
+    for n in range(2, 13):
+        scheme = log_quadrature_scheme(n, n)
+        duff_scheme = DuffySchemeTouch3D(ProductScheme3D(scheme))
+        q_f = duff_scheme.integrate(f, 0, 1, 0, 1, 0, 1)
+        new_rel_error = abs((q_f - val_exact) / val_exact)
+        print(n, new_rel_error)
+        assert new_rel_error < rel_error or new_rel_error < 1e-12
+        rel_error = new_rel_error
+
+    assert rel_error < 1e-12
+
+    # Test the touch quadrature rule.
+    f = lambda xyz: np.log(xyz[0]**2 + (xyz[1] + xyz[2])**2)
+    val_exact = 0.1781673429530223041202893120098701898314
+    rel_error = 1
+    for n in range(2, 13):
+        scheme = log_quadrature_scheme(n, n)
+        duff_scheme = DuffySchemeTouch3D(ProductScheme3D(scheme))
+        q_f = duff_scheme.integrate(f, 0, 1, 0, 1, 0, 1)
+        new_rel_error = abs((q_f - val_exact) / val_exact)
+        print(n, new_rel_error)
+        assert new_rel_error < rel_error or new_rel_error < 1e-12
+        rel_error = new_rel_error
+
+    assert rel_error < 1e-12
+
+    f = lambda xyz: np.log((xyz[0] + 2 * xyz[1])**2 + xyz[2]**2)
+    val_exact = 0.80392693298465673176
+    rel_error = 1
+    for n in range(2, 13):
+        scheme = log_quadrature_scheme(n, n)
+        duff_scheme = DuffySchemeTouch3D(ProductScheme3D(scheme))
+        q_f = duff_scheme.integrate(f, 0, 1, 0, 1, 0, 1)
+        new_rel_error = abs((q_f - val_exact) / val_exact)
+        print(n, new_rel_error)
+        assert new_rel_error < rel_error or new_rel_error < 1e-12
+        rel_error = new_rel_error
+
+    assert rel_error < 1e-12
+
+    f = lambda xyz: np.log((xyz[0] + 0.5 * xyz[1])**2 + xyz[2]**2)
+    val_exact = -0.22999882492711279068
+    rel_error = 1
+    for n in range(2, 13):
+        scheme = log_quadrature_scheme(n, n)
+        duff_scheme = DuffySchemeTouch3D(ProductScheme3D(scheme))
+        q_f = duff_scheme.integrate(f, 0, 1, 0, 1, 0, 1)
+        new_rel_error = abs((q_f - val_exact) / val_exact)
+        print(n, new_rel_error)
+        assert new_rel_error < rel_error or new_rel_error < 1e-11
+        rel_error = new_rel_error
+
+    assert rel_error < 1e-11
+
+    b = 0.25
+    G_time = lambda xy: 1. / (4 * np.pi) * exp1(xy / (4 * b))
+
+    v0 = np.array([1., 1.]).reshape(-1, 1)
+    v1 = np.array([2, 1.]).reshape(-1, 1)
+    v2 = np.array([0, 1]).reshape(-1, 1)
+    v3 = np.array([1, 0]).reshape(-1, 1)
+    h_elem = 1
+    h = 1
+
+    # Create parametrizations of Q and K.
+    gamma_K = lambda y: v0 + (v1 - v0) * y
+    gamma_Q = lambda x, z: v0 + (v2 - v0) * x + (v3 - v0) * z
+    assert np.all(gamma_Q(0, 0) == gamma_K(0))
+
+    #u0 = lambda xy: np.ones(xy.shape[1])
+    #f = lambda xyz: u0(gamma_Q(xyz[0], xyz[2])) * G_time(
+    #    np.sum((gamma_Q(xyz[0], xyz[2]) - gamma_K(xyz[1]))**2, axis=0))
+    f = lambda xyz: 1 / (4 * np.pi) * exp1((xyz[0] + xyz[1])**2 + xyz[2]**2)
+
+    #val_exact = 0.0201681640240317535810058111329
+    #val_exact = 0.02016816651934319
+    #val_exact = 0.020168166580447650
+    val_exact = 0.020168166583416268
+    rel_error = 1
+    for n in range(2, 13):
+        scheme = log_quadrature_scheme(n, n)
+        duff_scheme = DuffySchemeTouch3D(ProductScheme3D(scheme))
+        fx = f(duff_scheme.points)
+        q_f = h_elem**2 * h * np.dot(fx, duff_scheme.weights)
+        new_rel_error = abs((q_f - val_exact) / val_exact)
+        print(n, new_rel_error)
+        assert new_rel_error < rel_error or new_rel_error < 1e-11
+        rel_error = new_rel_error
+
+    assert rel_error < 1e-11

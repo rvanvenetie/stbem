@@ -36,22 +36,8 @@ class InitialPotential:
 
     def linform(self, elem_trial):
         """ Evaluates <M_0 u_0, 1_trial>. """
-        a, b = elem_trial.time_interval
-        G_time = time_integrated_kernel(a, b)
+        assert self.initial_mesh is not None
 
-        c, d = elem_trial.space_interval
-        points = c + (d - c) * self.gauss_scheme.points
-
-        # TODO: Vectorize.
-        fx = np.zeros(len(points))
-        for i, x_hat in enumerate(points):
-            x = elem_trial.gamma_space(x_hat)
-            f = lambda y: self.u0(y) * G_time(np.sum((x - y)**2, axis=0))
-            fx[i] = self.space_integrator(f)
-        return (d - c) * np.dot(fx, self.gauss_scheme.weights)
-
-    def linform_mesh(self, elem_trial):
-        """ Evaluates <M_0 u_0, 1_trial>. """
         # Integrate the heat kernel over time.
         a, b = elem_trial.time_interval
         G_time = time_integrated_kernel(a, b)
@@ -70,10 +56,6 @@ class InitialPotential:
 
         n0 = v0.xy_np
         n1 = v1.xy_np
-        #print('gamma(c) = {}\t gamma(d) = {}'.format(
-        #    elem_trial.gamma_space(c).flatten(),
-        #    elem_trial.gamma_space(d).flatten()))
-        #print('n0 = {}\tn1 = {}'.format(n0.flatten(), n1.flatten()))
         assert d - c == np.linalg.norm(n0 - n1)
 
         id_bdr = 0
@@ -125,7 +107,6 @@ class InitialPotential:
                 gamma_Q = lambda x, z: n1 + (n2 - n1) * x + (n3 - n1) * z
                 assert np.all(gamma_Q(0, 0) == gamma_K(0))
             else:
-
                 # Create parametrizations of Q and K.
                 gamma_K = lambda y: n0 + (n1 - n0) * y
                 gamma_Q = elem.gamma()
@@ -142,68 +123,13 @@ class InitialPotential:
         #assert touch_bdr >= 1
         return math.fsum([val for elem, val in ips]), ips
 
-    def linform_alt(self, elem_trial):
-        """ Evaluates <M_0 u_0, 1_trial>. """
-        a, b = elem_trial.time_interval
-        c, d = elem_trial.space_interval
-        points = np.array([
-            a + (b - a) * self.gauss_2d.points[0],
-            c + (d - c) * self.gauss_2d.points[1]
-        ])
-
-        # TODO: Vectorize.
-        fx = np.zeros(points.shape[1])
-        for i in range(points.shape[1]):
-            t = points[0, i]
-            x = elem_trial.gamma_space(points[1, i])
-            f = lambda y: self.u0(y) * np.exp(-np.sum((x - y)**2, axis=0) /
-                                              (4 * t))
-            fx[i] = self.space_integrator(f) / (4 * np.pi * t)
-
-        return (d - c) * (b - a) * np.dot(fx, self.gauss_2d.weights)
-
-    def linform_alt_alt(self, elem_trial):
-        """ Evaluates <M_0 u_0, 1_trial>. """
-        a, b = elem_trial.time_interval
-        c, d = elem_trial.space_interval
-        if a == 0:
-            time_integrated_kernel = lambda xy: 1. / (4 * np.pi) * exp1(xy / (
-                4 * b))
-        else:
-            time_integrated_kernel = lambda xy: 1. / (4 * np.pi) * (exp1(xy / (
-                4 * b)) - exp1(xy / (4 * a)))
-
-        fy = np.zeros(self.gauss_2d.points.shape[1])
-        for i in range(len(self.gauss_2d.weights)):
-            y = self.gauss_2d.points[:, i].reshape(2, 1)
-
-            def g(x_hat):
-                return time_integrated_kernel(
-                    np.sum((elem_trial.gamma_space(x_hat) - y)**2, axis=0))
-
-            if c <= y[0] <= d:
-                fy[i] = self.u0(y) * (self.gauss_scheme.integrate(g, c, y[0]) +
-                                      self.gauss_scheme.integrate(g, y[0], d))
-            else:
-                fy[i] = self.u0(y) * self.gauss_scheme.integrate(g, c, d)
-        return np.dot(fy, self.gauss_2d.weights)
-
     def linform_vector(self):
         """ Evaluates <M_0 u_0, 1_trial> for all elems in bdr mesh. """
         elems = list(self.bdr_mesh.leaf_elements)
         N = len(elems)
         vec = np.zeros(shape=N)
         for j, elem_trial in enumerate(elems):
-            vec[j] = self.linform(elem_trial)
-        return vec
-
-    def linform_vector_mesh(self):
-        """ Evaluates <M_0 u_0, 1_trial> for all elems in bdr mesh. """
-        elems = list(self.bdr_mesh.leaf_elements)
-        N = len(elems)
-        vec = np.zeros(shape=N)
-        for j, elem_trial in enumerate(elems):
-            vec[j], _ = self.linform_mesh(elem_trial)
+            vec[j], _ = self.linform(elem_trial)
         return vec
 
     def evaluate(self, t, x):
@@ -247,7 +173,7 @@ if __name__ == "__main__":
         print(quad_order, abs((val_1 - val_exact)) / val_exact)
         val_1_aa = IP.linform_alt_alt(elems[0])
         print(quad_order, abs((val_1_aa - val_exact)) / val_exact)
-        val_2, elem_ip = IP.linform_mesh(elems[0])
+        val_2, elem_ip = IP.linform(elems[0])
         print(quad_order, abs((val_2 - val_exact)) / val_exact)
         for elem, val in elem_ip:
             print('\t{}\t'.format(elem.vertices[0].xy), end='')

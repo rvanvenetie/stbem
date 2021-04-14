@@ -1,4 +1,5 @@
 import numpy as np
+import quadpy
 
 
 # Simple parametrizations.
@@ -12,16 +13,28 @@ def circle_project(x):
     return np.atan(x[1] / x[0])
 
 
-def line(a, b, t_start=0):
+def line(a, b, x_start=0):
     """ Returns parametrization of the segment from a to b. """
     norm = np.linalg.norm(b - a)
     direct = (b - a) / norm
 
     def fun(x_hat):
-        x_hat = x_hat - t_start
+        x_hat = x_hat - x_start
         return np.vstack([x_hat * direct[0] + a[0], x_hat * direct[1] + a[1]])
 
     return fun, norm
+
+
+def line_project(a, b, x_start=0):
+    """ Finds t that minimized |line_ab(t) - y|_2. """
+    norm = np.linalg.norm(b - a)
+    direct = (b - a) / norm
+
+    def fun(y):
+        t_proj = np.dot(y - a, direct) / np.dot(direct, direct) + x_start
+        return t_proj
+
+    return fun
 
 
 def central_derivative(gamma, x, h=1e-5):
@@ -75,28 +88,6 @@ class PiecewiseParametrization:
 
 
 class PiecewisePolygon(PiecewiseParametrization):
-    def __init__(self, vertices):
-        for vertex in vertices:
-            assert len(vertex) == 2
-        assert np.all(vertices[0] == vertices[-1])
-
-        # Store vertices.
-        self.vertices = vertices
-
-        # Create piecewise functions.
-        pw_start = [0]
-        pw_gamma = []
-        for i in range(len(vertices) - 1):
-            a, b = vertices[i], vertices[i + 1]
-            gamma, length = line(a, b, t_start=pw_start[i])
-            pw_start.append(length + pw_start[i])
-            pw_gamma.append(gamma)
-
-        # Invoke parent.
-        super().__init__(pw_start=pw_start, pw_gamma=pw_gamma)
-
-
-class PiecewisePolygon(PiecewiseParametrization):
     def __init__(self, vertices, closed=True):
         for vertex in vertices:
             assert len(vertex) == 2
@@ -106,9 +97,12 @@ class PiecewisePolygon(PiecewiseParametrization):
         # Create piecewise functions.
         pw_start = [0]
         pw_gamma = []
+        pw_proj = []
         for i in range(len(vertices) - 1):
             a, b = vertices[i], vertices[i + 1]
-            gamma, length = line(a, b, t_start=pw_start[i])
+            gamma, length = line(a, b, x_start=pw_start[i])
+            pw_proj.append(line_project(a, b, x_start=pw_start[i]))
+
             pw_start.append(length + pw_start[i])
             pw_gamma.append(gamma)
 
@@ -125,6 +119,10 @@ class Circle(PiecewiseParametrization):
         # Invoke parent.
         super().__init__(pw_start=pw_start, pw_gamma=pw_gamma)
 
+    def integrator(self, poly_order):
+        scheme = quadpy.s2.get_good_scheme(poly_order)
+        return lambda f: scheme.integrate(f, [0.0, 0.0], 1.0)
+
     def project(self, x):
         """ Projects the vector x onto the surface and returns the params. """
 
@@ -136,6 +134,14 @@ class UnitSquare(PiecewisePolygon):
         v2 = np.array([1, 1])
         v3 = np.array([0, 1])
         super().__init__(vertices=[v0, v1, v2, v3, v0])
+
+    def integrator(self, poly_order):
+        #scheme = quadpy.c2.product(quadpy.c1.gauss_legendre(poly_order))
+        scheme = quadpy.c2.get_good_scheme(poly_order)
+        return lambda f: scheme.integrate(
+            f,
+            [[[0.0, 0.0], [1.0, 0.0]], [[0.0, 1.0], [1.0, 1.0]]],
+        )
 
 
 class LShape(PiecewisePolygon):
