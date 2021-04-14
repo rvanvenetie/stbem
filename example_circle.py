@@ -22,6 +22,7 @@ def l2(f):
 
 
 def u(t, x):
+    if t == 0: return 0
     return 1 / (4 * np.pi * t) * np.exp(-((x[0] - 1)**2 + (x[1] - 1)**2) /
                                         (4 * t))
 
@@ -61,9 +62,19 @@ Phi_prev = None
 elems_prev = None
 elems_cur = None
 
+pts_T = [0.1, 0.25, 0.5, 0.75, 1]
+pts_xy = []
+for x in np.linspace(-1, 1, 20):
+    for y in np.linspace(-1, 1, 20):
+        if x**2 + y**2 < 1:
+            pts_xy.append([x, y])
+#pts_xy = [[0, 0], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5], [0.75, 0],
+#          [0, 0.75], [-0.75, 0], [0, -0.75]]
+
 val_exact = u(0.5, [0, 0])
 dofs = []
 err_pointwise = []
+err_linfs = [[] for _ in pts_T]
 err_h_h2 = []
 err_h_h2_l2 = []
 err_l2 = []
@@ -113,6 +124,21 @@ for _ in range(10):
     print('N={}\terr_pointwise={}'.format(N, (val - val_exact) / val_exact))
     err_pointwise.append(abs(val - val_exact))
 
+    # Evaluate in the other points.
+    for i, t in enumerate(pts_T):
+        max_t = 0
+        for xy in pts_xy:
+            u_pt = u(t, xy)
+            uh_pt = np.dot(Phi_cur,
+                           SL.potential_vector(t,
+                                               np.array(xy).reshape(2, 1)))
+            rel_error = abs(u_pt - uh_pt) / u_pt
+            #print('\t({}, {}, {}) = {}'.format(t, xy,
+            #                                   np.sqrt(xy[0]**2 + xy[1]**2))
+            max_t = max(rel_error, max_t)
+        print('N={}\terr_linf_{}={}'.format(N, t, max_t))
+        err_linfs[i].append(max_t)
+
     if Phi_prev is not None:
         Phi_prev_prolong = prolongate(Phi_prev, elems_prev, elems_cur)
         diff = Phi_cur - Phi_prev_prolong
@@ -133,5 +159,5 @@ for _ in range(10):
     Phi_prev = Phi_cur
     mesh.uniform_refine()
     print(
-        '\ndofs={}\nerr_l2={}\nerr_pointwise={}\nerr_h_h2={}\nerr_h_h2_l2={}\n------'
-        .format(dofs, err_l2, err_pointwise, err_h_h2, err_h_h2_l2))
+        '\ndofs={}\nerr_l2={}\nerr_pointwise={}\nerr_linfs={}\nerr_h_h2={}\nerr_h_h2_l2={}\n------'
+        .format(dofs, err_l2, err_pointwise, err_linfs, err_h_h2, err_h_h2_l2))
