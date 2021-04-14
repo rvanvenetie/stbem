@@ -24,7 +24,7 @@ class Slobodeckij:
         self.semi_1_4_xy = x * (1 - y)
         self.semi_1_4_weights = 2 * gauss_sqrtinv_2d.weights / y
 
-    def seminorm_1_4(self, f, a, b):
+    def seminorm_h_1_4(self, f, a, b):
         """ Evaluates the H^{1/4}-seminorm of smooth f on the interval [a,b]. """
         h = b - a
         x = a + h * self.gauss_sqrtinv.points
@@ -33,7 +33,7 @@ class Slobodeckij:
         fxy = np.asarray(f(xy))
         return h**(1 / 2) * np.dot((fx - fxy)**2, self.semi_1_4_weights)
 
-    def seminorm_1_2(self, f, a, b, gamma=None):
+    def seminorm_h_1_2(self, f, a, b, gamma=None):
         """ Evaluates the H^{1/2}-seminorm of smooth f on the interval [a,b].
 
         Evaluates |f(x) - f(y)|^2 / |x - y|^2.

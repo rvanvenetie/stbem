@@ -1,4 +1,5 @@
 import numpy as np
+import quadpy
 import random
 import time
 from scipy.special import exp1
@@ -7,6 +8,17 @@ from mesh import Mesh, MeshParametrized
 import itertools
 from quadrature import log_quadrature_scheme, gauss_quadrature_scheme, ProductScheme2D, DuffyScheme2D
 from single_layer import SingleLayerOperator
+
+
+def l2(f, N_poly):
+    """ Evaluates l2 norm over S^1 x [0, 1]. """
+    circle_quad = quadpy.s2.get_good_scheme(N_poly)
+    line_quad = gauss_quadrature_scheme(N_poly)
+    fx = np.zeros(len(line_quad.points))
+    for i, t in enumerate(line_quad.points):
+        assert 0 <= t <= 1
+        fx[i] = circle_quad.integrate(lambda y: f(t, y)**2, [0.0, 0.0], 1.0)
+    return np.sqrt(np.dot(fx, line_quad.weights))
 
 
 def u(t, x):
@@ -54,6 +66,7 @@ dofs = []
 err_pointwise = []
 err_h_h2 = []
 err_h_h2_l2 = []
+err_l2 = []
 for _ in range(10):
     SL = SingleLayerOperator(mesh)
     time_mat_begin = time.time()
@@ -79,6 +92,22 @@ for _ in range(10):
     Phi_cur = np.linalg.solve(mat, rhs)
     print('Solving matrix took {}s'.format(time.time() - time_solve_begin))
 
+    # Define the l2 error with exact solution.
+    def err(t, y_vec):
+        assert y_vec.shape[0] == 2
+        result = np.zeros(y_vec.shape[1])
+        for i, y in enumerate(y_vec.T):
+            result[i] = u(t, y) - np.dot(
+                Phi_cur, SL.potential_vector(t, y.reshape(2, 1)))
+        return result
+
+    # Calculate l2 error
+    time_l2_begin = time.time()
+    val_l2 = l2(err, 17)
+    print('Calculating l2 error took {}s'.format(time.time() - time_l2_begin))
+    err_l2.append(val_l2)
+    print('N={}\terr_l2={}'.format(N, val_l2))
+
     # Evaluate in 0.5, [0,0].
     val = np.dot(Phi_cur, SL.potential_vector(0.5, np.array([[0], [0]])))
     print('N={}\terr_pointwise={}'.format(N, (val - val_exact) / val_exact))
@@ -91,17 +120,18 @@ for _ in range(10):
         print('N={}\terr_h_h2={}'.format(len(elems_prev), err))
         err_h_h2.append(err)
 
-        err_l2 = 0
+        val_l2 = 0
         for j, elem in enumerate(elems_cur):
-            err_l2 += (elem.space_interval[1] - elem.space_interval[0]) * (
+            val_l2 += (elem.space_interval[1] - elem.space_interval[0]) * (
                 elem.time_interval[1] - elem.time_interval[0]) * diff[j]**2
 
-        err_l2 = np.sqrt(err_l2)
-        err_h_h2_l2.append(err_l2)
-        print('N={}\terr_h_h2_l2={}'.format(len(elems_prev), err_l2))
+        val_l2 = np.sqrt(val_l2)
+        err_h_h2_l2.append(val_l2)
+        print('N={}\terr_h_h2_l2={}'.format(len(elems_prev), val_l2))
 
     elems_prev = elems_cur
     Phi_prev = Phi_cur
     mesh.uniform_refine()
-    print('\ndofs={}\nerr_pointwise={}\nerr_h_h2={}\nerr_h_h2_l2={}\n------'.
-          format(dofs, err_pointwise, err_h_h2, err_h_h2_l2))
+    print(
+        '\ndofs={}\nerr_l2={}\nerr_pointwise={}\nerr_h_h2={}\nerr_h_h2_l2={}\n------'
+        .format(dofs, err_l2, err_pointwise, err_h_h2, err_h_h2_l2))

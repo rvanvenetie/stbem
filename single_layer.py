@@ -155,6 +155,7 @@ class SingleLayerOperator:
 
     def potential(self, elem_trial, t, x):
         """ Evaluates (V 1_trial)(t,x) for t,x not on the bdr. """
+        assert x.shape == (2, 1)
         if t <= elem_trial.time_interval[0]: return 0
 
         # Calculate the time integrated kernel.
