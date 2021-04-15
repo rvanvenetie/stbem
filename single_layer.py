@@ -142,14 +142,32 @@ class SingleLayerOperator:
                                     *elem_trial.space_interval,
                                     *elem_test.space_interval)
 
-    def bilform_matrix(self):
+    def bilform_matrix(self, cache_dir=None):
         """ Returns the dense matrix <V 1_trial, 1_test>. """
         elems = list(self.mesh.leaf_elements)
         N = len(elems)
+        if cache_dir:
+            cache_fn = "{}/SL_dofs_{}_{}.npy".format(cache_dir, N,
+                                                     self.mesh.md5())
+            try:
+                mat = np.load(cache_fn)
+                print("Loaded Single Layer from file {}".format(cache_fn))
+                return mat
+            except:
+                pass
+
         mat = np.zeros(shape=(N, N))
         for i, elem_test in enumerate(elems):
             for j, elem_trial in enumerate(elems):
                 mat[i, j] = self.bilform(elem_trial, elem_test)
+
+        if cache_dir:
+            try:
+                np.save(cache_fn, mat)
+                print("Stored Single Layer to {}".format(cache_fn))
+            except:
+                pass
+
         return mat
 
     def potential(self, elem_trial, t, x):

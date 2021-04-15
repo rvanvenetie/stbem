@@ -1,6 +1,7 @@
 import random
 from collections import OrderedDict
 from parametrization import Circle, UnitInterval, UnitSquare, LShape, PiecewiseParametrization
+import hashlib
 
 
 class Vertex:
@@ -298,6 +299,9 @@ class Mesh:
         leaves = list(self.leaf_elements)
         for elem in leaves:
             self.refine_space(elem)
+
+    def md5(self):
+        return hashlib.md5(self.gmsh().encode()).hexdigest()
 
     def gmsh(self, use_gamma=False):
         """Returns the (leaf) grid in gmsh format."""
