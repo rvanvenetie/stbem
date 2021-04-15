@@ -64,10 +64,13 @@ for k in range(10):
                     calc_dict[tup] = SL.bilform(elem_trial, elem_test)
 
                 mat[i, j] = calc_dict[tup]
-        np.save(cache_SL_fn, mat)
+        try:
+            np.save(cache_SL_fn, mat)
+            print("Stored Single Layer to {}".format(cache_SL_fn))
+        except:
+            pass
         print('Calculating matrix fast took {}s'.format(time.time() -
                                                         time_mat_begin))
-        print("Stored Single Layer to {}".format(cache_SL_fn))
 
     # Calculate initial potential.
     time_rhs_begin = time.time()
@@ -85,7 +88,7 @@ for k in range(10):
             if not tup in calc_dict:
                 calc_dict[tup] = IP.linform(elem_test)
             M0_u0[j], _ = calc_dict[tup]
-        np.save(cache_IP_fn, mat)
+        np.save(cache_IP_fn, M0_u0)
         print('Calculating initial potential took {}s'.format(time.time() -
                                                               time_rhs_begin))
         print("Stored Initial Potential to {}".format(cache_IP_fn))
