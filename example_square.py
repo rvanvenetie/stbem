@@ -31,7 +31,7 @@ IP = InitialPotential(bdr_mesh=mesh,
 
 dofs = []
 errs_l2 = []
-for i in range(10):
+for k in range(10):
     SL = SingleLayerOperator(mesh)
     time_mat_begin = time.time()
     mat = SL.bilform_matrix(cache_dir='data')
@@ -49,19 +49,22 @@ for i in range(10):
 
     # Solve.
     time_solve_begin = time.time()
-    Phi_cur = np.linalg.solve(mat, -M0_u0)
+    Phi_cur = np.linalg.solve(mat, M0_u0)
     print('Solving matrix took {}s'.format(time.time() - time_solve_begin))
 
-    N_time = 2**i
-    N_space = 4 * 2**i
+    N_time = 2**k
+    N_space = 4 * 2**k
     sol = np.zeros((N_time, N_space))
+    plt.figure()
     for i, elem in enumerate(elems_cur):
         sol[int(elem.vertices[0].t * N_time),
-            int(elem.vertices[0].x * N_time)] = abs(Phi_cur[i] - u_neumann(elem.center.t, elem.center.x) 
+            int(elem.vertices[0].x *
+                N_time)] = abs(Phi_cur[i] -
+                               u_neumann(elem.center.t, elem.center.x))
     plt.imshow(sol, origin='lower', extent=[0, 4, 0, 1])
     plt.colorbar()
-    
-    plt.show()
+    plt.savefig('imshow_{}.jpg'.format(k))
+    #plt.show()
 
     # Estimate the l2 error of the neumann trace.
     time_l2_begin = time.time()
