@@ -35,20 +35,60 @@ dofs = []
 errs_l2 = []
 errs_pointwise = [[] for _ in pts_T]
 for k in range(10):
-    SL = SingleLayerOperator(mesh)
-    time_mat_begin = time.time()
-    mat = SL.bilform_matrix(cache_dir='data')
     elems_cur = list(mesh.leaf_elements)
     N = len(elems_cur)
-    dofs.append(N)
     print('Loop with {} dofs'.format(N))
-    print('Calculating matrix took {}s'.format(time.time() - time_mat_begin))
+    SL = SingleLayerOperator(mesh)
+    dofs.append(N)
+
+    #time_mat_begin = time.time()
+    #mat = SL.bilform_matrix(cache_dir='data')
+    #print('Calculating matrix took {}s'.format(time.time() - time_mat_begin))
+
+    cache_SL_fn = "{}/SL_fast_dofs_{}_{}.npy".format('data', N, mesh.md5())
+    try:
+        mat = np.load(cache_SL_fn)
+        print("Loaded Single Layer from file {}".format(cache_SL_fn))
+    except:
+        calc_dict = {}
+        time_mat_begin = time.time()
+        mat = np.zeros((N, N))
+        for i, elem_test in enumerate(elems_cur):
+            for j, elem_trial in enumerate(elems_cur):
+                if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
+                    continue
+                a, _, b, _ = *elem_test.time_interval, *elem_trial.time_interval
+                c, _, d, _ = *elem_test.space_interval, *elem_trial.space_interval
+                tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
+                if not tup in calc_dict:
+                    calc_dict[tup] = SL.bilform(elem_trial, elem_test)
+
+                mat[i, j] = calc_dict[tup]
+        np.save(cache_SL_fn, mat)
+        print('Calculating matrix fast took {}s'.format(time.time() -
+                                                        time_mat_begin))
+        print("Stored Single Layer to {}".format(cache_SL_fn))
 
     # Calculate initial potential.
     time_rhs_begin = time.time()
-    M0_u0 = IP.linform_vector()
-    print('Calculating initial potential took {}s'.format(time.time() -
-                                                          time_rhs_begin))
+    cache_IP_fn = "{}/IP_fast_dofs_{}_{}.npy".format('data', N, mesh.md5())
+    try:
+        M0_u0 = np.load(cache_IP_fn)
+        print("Loaded Initial Potential from file {}".format(cache_IP_fn))
+    except:
+        calc_dict = {}
+        M0_u0 = np.zeros(shape=N)
+        for j, elem_test in enumerate(elems_cur):
+            a = elem_test.space_interval[0] - math.floor(
+                elem_test.space_interval[0])
+            tup = (elem_test.time_interval[0], a)
+            if not tup in calc_dict:
+                calc_dict[tup] = IP.linform(elem_test)
+            M0_u0[j], _ = calc_dict[tup]
+        np.save(cache_IP_fn, mat)
+        print('Calculating initial potential took {}s'.format(time.time() -
+                                                              time_rhs_begin))
+        print("Stored Initial Potential to {}".format(cache_IP_fn))
 
     # Solve.
     time_solve_begin = time.time()

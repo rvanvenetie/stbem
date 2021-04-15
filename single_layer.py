@@ -123,9 +123,11 @@ class SingleLayerOperator:
         if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
             return 0
 
+        a, b, c, d = *elem_test.time_interval, *elem_trial.time_interval
+
         # Calculate the time integrated kernel.
-        G_time = double_time_integrated_kernel(*elem_test.time_interval,
-                                               *elem_trial.time_interval)
+        G_time = double_time_integrated_kernel(a - c, b - c, 0, d - c)
+
         gamma_test = elem_test.gamma_space
         gamma_trial = elem_trial.gamma_space
 
