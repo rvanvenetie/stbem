@@ -46,12 +46,12 @@ class InitialPotential:
         c, d = elem_trial.space_interval
 
         # Create mesh of Omega adapted to the given v0, v1.
-        mesh = self.initial_mesh(elem_trial.gamma_space(c),
-                                 elem_trial.gamma_space(d))
+        initial_mesh = self.initial_mesh(elem_trial.gamma_space(c),
+                                         elem_trial.gamma_space(d))
 
         # Find vertices associated to v0 and v1.
-        v0 = mesh.vertex_from_coords(elem_trial.gamma_space(c))
-        v1 = mesh.vertex_from_coords(elem_trial.gamma_space(d))
+        v0 = initial_mesh.vertex_from_coords(elem_trial.gamma_space(c))
+        v1 = initial_mesh.vertex_from_coords(elem_trial.gamma_space(d))
         assert v0 is not None and v1 is not None
 
         n0 = v0.xy_np
@@ -62,7 +62,7 @@ class InitialPotential:
         touch_bdr = 0
         result = 0
         ips = []
-        for elem in mesh.leaf_elements:
+        for elem in initial_mesh.leaf_elements:
             # Check whether this element has an identical bdr,
             if v0 in elem.vertices and v1 in elem.vertices:
                 id_bdr += 1
@@ -143,6 +143,17 @@ class InitialPotential:
                                                  (4 * t)) * self.u0(y)
 
         return self.space_integrator(f)
+
+        #ips = []
+        #for elem in self.initial_mesh.leaf_elements:
+        #    val = self.gauss_2d.integrate(f, elem.vertices[0].x,
+        #                                  elem.vertices[2].x,
+        #                                  elem.vertices[0].y,
+        #                                  elem.vertices[2].y)
+        #    ips.append((elem, val))
+
+        #result_mesh = math.fsum([val for elem, val in ips])
+        #return result_mesh
 
 
 if __name__ == "__main__":

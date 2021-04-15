@@ -4,6 +4,7 @@ import math
 from mesh import Mesh, MeshParametrized
 from initial_potential import InitialPotential
 from initial_mesh import UnitSquareBoundaryRefined
+import initial_mesh
 from single_layer import SingleLayerOperator
 import time
 from parametrization import Circle, UnitSquare, LShape
@@ -29,8 +30,10 @@ IP = InitialPotential(bdr_mesh=mesh,
                       u0=u0,
                       initial_mesh=UnitSquareBoundaryRefined)
 
+pts_T = [0.01, 0.1, 0.25, 0.5, 0.75, 1]
 dofs = []
 errs_l2 = []
+errs_pointwise = [[] for _ in pts_T]
 for k in range(10):
     SL = SingleLayerOperator(mesh)
     time_mat_begin = time.time()
@@ -52,6 +55,7 @@ for k in range(10):
     Phi_cur = np.linalg.solve(mat, -M0_u0)
     print('Solving matrix took {}s'.format(time.time() - time_solve_begin))
 
+    # Plot the solution.
     N_time = 2**k
     N_space = 4 * 2**k
     err = np.zeros((N_time, N_space))
@@ -86,7 +90,19 @@ for k in range(10):
     err_l2 = np.sqrt(math.fsum(err_l2))
     errs_l2.append(err_l2)
     print('Error estimation took {}s'.format(time.time() - time_l2_begin))
-
     print('N={}\terr_l2={}'.format(N, err_l2))
-    print('\ndofs={}\nerrs_l2={}\n------'.format(dofs, errs_l2))
+
+    # Evaluate pointwise error in t, [0.5,0.5].
+    print('N={} pointwise error'.format(N))
+    for i, t in enumerate(pts_T):
+        x = np.array([[0.5], [0.5]])
+        val = np.dot(Phi_cur, SL.potential_vector(t, x)) + IP.evaluate(t, x)
+        val_exact = u(t, [0.5, 0.5])
+        err_rel = abs((val - val_exact) / val_exact)
+        print('\t Relative error in ({}, {})={}'.format(
+            t, x.flatten(), err_rel))
+        errs_pointwise[i].append(err_rel)
+
+    print('\ndofs={}\nerrs_l2={}\nerrs_pointwise={}\n------'.format(
+        dofs, errs_l2, errs_pointwise))
     mesh.uniform_refine()
