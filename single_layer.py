@@ -22,26 +22,29 @@ def alpha(z):
     return lambda x: np.sum(x**2, axis=0) / (4 * z)
 
 
+def noop(x):
+    return 0
+
+
 def g(a, b):
     """ Returns g_z for z = a - b. """
     if a <= b:
-        g_z = lambda x: 0
-    else:
-        z = a - b
-        a_z = alpha(z)
-        g_z = lambda x: FPI_INV * expi(-a_z(x))
-    return g_z
+        return noop
+    z = a - b
+    a_z = alpha(z)
+    return lambda x: FPI_INV * expi(-a_z(x))
 
 
 def f(a, b):
     """ Returns f_z for z = a - b"""
     if a <= b:
-        f_z = lambda x: 0
-    else:
-        z = a - b
-        a_z = alpha(z)
-        f_z = lambda x: FPI_INV * (z * np.exp(-a_z(x)) + z *
-                                   (1 + a_z(x)) * expi(-a_z(x)))
+        return noop
+    z = a - b
+
+    def f_z(x):
+        a_z = np.sum(x**2, axis=0) / (4 * z)
+        return FPI_INV * (z * np.exp(-a_z) + z * (1 + a_z) * expi(-a_z))
+
     return f_z
 
 

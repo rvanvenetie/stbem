@@ -123,19 +123,14 @@ class Element:
                              x=0.5 * (self.vertices[0].x + self.vertices[1].x),
                              idx=-1)
 
+        self.time_interval = self.vertices[0].t, self.vertices[2].t
+        self.space_interval = self.vertices[0].x, self.vertices[1].x
+
     def dist(self, other):
         """ Calculates the distance in the embedded space. """
         assert self.gamma_space and other.gamma_space
         return np.linalg.norm(
             self.gamma_space(self.center) - other.gamma_space(other.center))
-
-    @property
-    def time_interval(self):
-        return self.vertices[0].t, self.vertices[2].t
-
-    @property
-    def space_interval(self):
-        return self.vertices[0].x, self.vertices[1].x
 
     @property
     def level_time(self):
