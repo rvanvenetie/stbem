@@ -49,21 +49,29 @@ for k in range(10):
 
     # Solve.
     time_solve_begin = time.time()
-    Phi_cur = np.linalg.solve(mat, M0_u0)
+    Phi_cur = np.linalg.solve(mat, -M0_u0)
     print('Solving matrix took {}s'.format(time.time() - time_solve_begin))
 
     N_time = 2**k
     N_space = 4 * 2**k
+    err = np.zeros((N_time, N_space))
     sol = np.zeros((N_time, N_space))
-    plt.figure()
     for i, elem in enumerate(elems_cur):
         sol[int(elem.vertices[0].t * N_time),
+            int(elem.vertices[0].x * N_time)] = Phi_cur[i]
+        err[int(elem.vertices[0].t * N_time),
             int(elem.vertices[0].x *
                 N_time)] = abs(Phi_cur[i] -
                                u_neumann(elem.center.t, elem.center.x))
+
+    plt.figure()
     plt.imshow(sol, origin='lower', extent=[0, 4, 0, 1])
     plt.colorbar()
-    plt.savefig('imshow_{}.jpg'.format(k))
+    plt.savefig('imshow_sol_{}.jpg'.format(k))
+    plt.figure()
+    plt.imshow(err, origin='lower', extent=[0, 4, 0, 1])
+    plt.colorbar()
+    plt.savefig('imshow_err_{}.jpg'.format(k))
     #plt.show()
 
     # Estimate the l2 error of the neumann trace.
