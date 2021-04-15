@@ -132,10 +132,10 @@ for _ in range(10):
             uh_pt = np.dot(Phi_cur,
                            SL.potential_vector(t,
                                                np.array(xy).reshape(2, 1)))
-            rel_error = abs(u_pt - uh_pt) / u_pt
+            abs_error = abs(u_pt - uh_pt)
             #print('\t({}, {}, {}) = {}'.format(t, xy,
             #                                   np.sqrt(xy[0]**2 + xy[1]**2))
-            max_t = max(rel_error, max_t)
+            max_t = max(abs_error, max_t)
         print('N={}\terr_linf_{}={}'.format(N, t, max_t))
         err_linfs[i].append(max_t)
 
