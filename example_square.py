@@ -188,9 +188,16 @@ for k in range(10):
         #initial_mesh = UnitSquareBoundaryRefined(elem.gamma_space(c),
         #                                         elem.gamma_space(d))
 
-        err_estim_sqr[i] = (
-            elem.h_t**(-2 * mu) + elem.h_x**(-2 * nu)) * gauss_2d.integrate(
-                residual_squared, *elem.time_interval, *elem.space_interval)
+        t = elem.time_interval[0]
+        x = elem.space_interval[0] - math.floor(elem.space_interval[0])
+        if not (t, x) in calc_dict:
+            calc_dict[t, x] = (elem.h_t**(-2 * mu) +
+                               elem.h_x**(-2 * nu)) * gauss_2d.integrate(
+                                   residual_squared, *elem.time_interval, *
+                                   elem.space_interval)
+
+        err_estim_sqr[i] = calc_dict[t, x]
+
     errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
     print('Error estimation of weighted residual of order {} took {}s'.format(
         err_order,
