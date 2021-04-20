@@ -164,7 +164,8 @@ for k in range(10):
     err_estim_sqr = np.zeros(N)
     mu = 1 / 2
     nu = 1 / 4
-    gauss_2d = ProductScheme2D(gauss_quadrature_scheme(3))
+    err_order = 3
+    gauss_2d = ProductScheme2D(gauss_quadrature_scheme(err_order))
     #quad_scheme = quadpy.get_good_scheme(3)
     calc_dict = {}
     for i, elem in enumerate(elems_cur):
@@ -191,9 +192,9 @@ for k in range(10):
             elem.h_t**(-2 * mu) + elem.h_x**(-2 * nu)) * gauss_2d.integrate(
                 residual_squared, *elem.time_interval, *elem.space_interval)
     errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
-    print(
-        'Error estimation of weighted residual took {}s'.format(time.time() -
-                                                                time_l2_begin))
+    print('Error estimation of weighted residual of order {} took {}s'.format(
+        err_order,
+        time.time() - time_l2_begin))
 
     print('N={}\terr_estim={}'.format(N, errs_estim[-1]))
     print('N={}\terr_l2={}'.format(N, errs_l2[-1]))
