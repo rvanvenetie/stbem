@@ -1,12 +1,14 @@
 import numpy as np
+from fractions import Fraction
 
 
 class Vertex:
     def __init__(self, x, y, idx):
+        assert isinstance(x, Fraction) and isinstance(y, Fraction)
         self.x = x
         self.y = y
         self.xy = (x, y)
-        self.xy_np = np.array([[x], [y]])
+        self.xy_np = np.array([[float(x)], [float(y)]])
         self.idx = idx
 
     def __repr__(self):
@@ -73,7 +75,8 @@ class InitialMesh:
     def __init__(self, vertices, elements):
         self.vertices = []
         for i, xy in enumerate(vertices):
-            self.vertices.append(Vertex(x=xy[0], y=xy[1], idx=i))
+            self.vertices.append(
+                Vertex(x=Fraction(xy[0]), y=Fraction(xy[1]), idx=i))
         self.__bisect_edge = {}
         self.parent_edge = {}
         self.elements = []

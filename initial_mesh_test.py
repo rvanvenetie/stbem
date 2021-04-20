@@ -51,9 +51,9 @@ def test_bdr_refine():
         assert len(mesh.leaf_elements) == 25
         assert elem.contains((1, 0.53125))
         assert elem.contains((1, 0.5))
-        assert elem.contains_vertex((1, 0.5))
-        assert elem.contains_vertex((1, 0.53125))
-        assert not elem.contains_vertex((1, 0.54))
+        assert elem.contains((1, 0.5))
+        assert elem.contains((1, 0.53125))
+        assert not elem.contains((1, 0.54))
 
 
 def test_gamma():

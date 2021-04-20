@@ -402,7 +402,7 @@ def test_single_layer_evaluate_pw_polygon():
         SL = SingleLayerOperator(mesh)
         elems = list(mesh.leaf_elements)
         for j, elem_trial in enumerate(elems):
-            for t in [0, 0.13, 0.25, 0.5, 0.75, 1]:
+            for t in [0, 0.01, 0.13, 0.25, 0.5, 0.75, 1]:
                 for x in [
                         0, 0.5 * SL.gamma_len, SL.gamma_len,
                         elem_trial.space_interval[0],

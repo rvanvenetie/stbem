@@ -1,5 +1,6 @@
 import numpy as np
 import quadpy
+import quadrature
 
 
 # Simple parametrizations.
@@ -120,7 +121,11 @@ class Circle(PiecewiseParametrization):
         super().__init__(pw_start=pw_start, pw_gamma=pw_gamma)
 
     def integrator(self, poly_order):
-        scheme = quadpy.s2.get_good_scheme(poly_order)
+        #scheme = quadpy.s2.get_good_scheme(poly_order)
+        assert (poly_order % 2 != 0)
+        n = (poly_order + 1) // 2
+        scheme = quadpy.s2._lether.lether(n)
+        assert scheme.degree == poly_order
         return lambda f: scheme.integrate(f, [0.0, 0.0], 1.0)
 
     def project(self, x):
@@ -137,11 +142,14 @@ class UnitSquare(PiecewisePolygon):
 
     def integrator(self, poly_order):
         #scheme = quadpy.c2.product(quadpy.c1.gauss_legendre(poly_order))
-        scheme = quadpy.c2.get_good_scheme(poly_order)
-        return lambda f: scheme.integrate(
-            f,
-            [[[0.0, 0.0], [1.0, 0.0]], [[0.0, 1.0], [1.0, 1.0]]],
-        )
+        scheme = quadrature.ProductScheme2D(
+            quadrature.gauss_quadrature_scheme(poly_order))
+        return lambda f: scheme.integrate(f, 0, 1, 0, 1)
+        #scheme = quadpy.c2.get_good_scheme(poly_order)
+        #return lambda f: scheme.integrate(
+        #    f,
+        #    [[[0.0, 0.0], [1.0, 0.0]], [[0.0, 1.0], [1.0, 1.0]]],
+        #)
 
 
 class LShape(PiecewisePolygon):

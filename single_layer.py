@@ -70,6 +70,7 @@ class SingleLayerOperator:
     def __init__(self, mesh, quad_order=12):
         self.gauss_scheme = gauss_quadrature_scheme(23)
         self.log_scheme = log_quadrature_scheme(quad_order, quad_order)
+        self.log_near_scheme = log_quadrature_scheme(3, 3)
         self.log_log = ProductScheme2D(self.log_scheme, self.log_scheme)
         self.duff_log_log = DuffyScheme2D(self.log_log, symmetric=False)
         self.mesh = mesh
@@ -126,7 +127,7 @@ class SingleLayerOperator:
         a, b, c, d = *elem_test.time_interval, *elem_trial.time_interval
 
         # Calculate the time integrated kernel.
-        G_time = double_time_integrated_kernel(a - c, b - c, 0, d - c)
+        G_time = double_time_integrated_kernel(a, b, c, d)
 
         gamma_test = elem_test.gamma_space
         gamma_trial = elem_trial.gamma_space
@@ -195,18 +196,20 @@ class SingleLayerOperator:
             vec[j] = self.potential(elem_trial, t, x)
         return vec
 
-    def evaluate(self, elem_trial, t, x_hat):
+    @profile
+    def evaluate(self, elem_trial, t, x_hat, x=None):
         """ Evaluates (V 1_trial)(t, gamma(x_hat)) for t, x_hat in the param domain. """
         if t <= elem_trial.time_interval[0]: return 0
 
         # Calculate the time integrated kernel.
-        x = self.mesh.gamma_space.eval(x_hat)
+        if x is None: x = self.mesh.gamma_space.eval(x_hat)
         G_time = time_integrated_kernel(t, *elem_trial.time_interval)
         G_time_parametrized = lambda y: G_time(x - elem_trial.gamma_space(y))
 
         # Integrate. Check where singularity lies, i.e. for y = x_hat.
         a, b = elem_trial.space_interval
-        if a < x_hat < b:
+        if a <= x_hat <= b:
+            assert np.all(elem_trial.gamma_space(x_hat) == x)
             return self.log_scheme.mirror().integrate(
                 G_time_parametrized, a, x_hat) + self.log_scheme.integrate(
                     G_time_parametrized, x_hat, b)
@@ -230,8 +233,9 @@ class SingleLayerOperator:
         elems = list(self.mesh.leaf_elements)
         N = len(elems)
         vec = np.zeros(shape=N)
+        x = self.mesh.gamma_space.eval(x_hat)
         for j, elem_trial in enumerate(elems):
-            vec[j] = self.evaluate(elem_trial, t, x_hat)
+            vec[j] = self.evaluate(elem_trial, t, x_hat, x)
         return vec
 
     def rhs_vector(self, f, gauss_order=23):

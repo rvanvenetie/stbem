@@ -1,6 +1,5 @@
 import numpy as np
 import quadrature_rules
-from parametrization import circle
 from quadrature_rules import log_quadrature_rule, sqrt_quadrature_rule, sqrtinv_quadrature_rule, gauss_sqrtinv_quadrature_rule, gauss_x_quadrature_rule, gauss_log_quadrature_rule
 
 
@@ -73,6 +72,7 @@ class QuadScheme1D:
         return self._mirror
 
     def integrate(self, f, a, b):
+        if a == b: return 0
         fx = (b - a) * np.asarray(f(a + (b - a) * self.points))
         return np.dot(fx, self.weights)
 
@@ -240,6 +240,7 @@ class DuffySchemeTouch3D(QuadScheme3D):
 
 
 if __name__ == "__main__":
+    from parametrization import circle
     import matplotlib.pyplot as plt
     from scipy.special import expi
 

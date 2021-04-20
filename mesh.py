@@ -2,10 +2,12 @@ import random
 from collections import OrderedDict
 from parametrization import Circle, UnitInterval, UnitSquare, LShape, PiecewiseParametrization
 import hashlib
+from fractions import Fraction
 
 
 class Vertex:
     def __init__(self, t, x, idx):
+        assert isinstance(t, Fraction) and isinstance(x, Fraction)
         self.t = t
         self.x = x
         self.idx = idx
@@ -119,12 +121,16 @@ class Element:
         assert self.vertices[0].t < self.vertices[2].t
         assert self.vertices[0].x < self.vertices[1].x
 
-        self.center = Vertex(t=0.5 * (self.vertices[0].t + self.vertices[2].t),
-                             x=0.5 * (self.vertices[0].x + self.vertices[1].x),
+        self.center = Vertex(t=(self.vertices[0].t + self.vertices[2].t) / 2,
+                             x=(self.vertices[0].x + self.vertices[1].x) / 2,
                              idx=-1)
 
-        self.time_interval = self.vertices[0].t, self.vertices[2].t
-        self.space_interval = self.vertices[0].x, self.vertices[1].x
+        self.time_interval = float(self.vertices[0].t), float(
+            self.vertices[2].t)
+        self.space_interval = float(self.vertices[0].x), float(
+            self.vertices[1].x)
+        self.h_t = float(self.vertices[2].t - self.vertices[0].t)
+        self.h_x = float(self.vertices[1].x - self.vertices[0].x)
 
     def dist(self, other):
         """ Calculates the distance in the embedded space. """
@@ -150,15 +156,15 @@ class Element:
 
 
 class Mesh:
-    def __init__(self, glue_space=False, initial_space_mesh=[0., 1.]):
+    def __init__(self, glue_space=False, initial_space_mesh=[0, 1]):
         self.glue_space = glue_space
 
         # Generate all vertices on both time boundaries.
         vertices = []
         for i, x in enumerate(initial_space_mesh):
             vertices.extend([
-                Vertex(t=0., x=x, idx=2 * i),
-                Vertex(t=1., x=x, idx=2 * i + 1)
+                Vertex(t=Fraction(0), x=Fraction(x), idx=2 * i),
+                Vertex(t=Fraction(1), x=Fraction(x), idx=2 * i + 1)
             ])
 
         # Generate all the necessary elements + edges.
@@ -203,8 +209,8 @@ class Mesh:
             child_vertex = edge.nbr_edge.children[0].vertices[1]
         else:
             a, b = edge.vertices
-            child_vertex = Vertex(t=0.5 * (a.t + b.t),
-                                  x=0.5 * (a.x + b.x),
+            child_vertex = Vertex(t=(a.t + b.t) / 2,
+                                  x=(a.x + b.x) / 2,
                                   idx=len(self.vertices))
             self.vertices.append(child_vertex)
 

@@ -5,30 +5,28 @@ from scipy.special import expi, erf, expn, erfc
 from pytest import approx
 from parametrization import Circle, UnitSquare, LShape
 import numpy as np
-from initial_potential import InitialPotential
+from initial_potential import InitialOperator
 
 
 def test_initial_potential_circle():
     mesh = MeshParametrized(Circle())
-    IP = InitialPotential(mesh, lambda y: np.ones(y.shape[1]), quad_order=19)
+    M0 = InitialOperator(mesh, lambda y: np.ones(y.shape[1]))
 
     for t in [1, 0.5, 0.1, 0.05]:
-        val = IP.evaluate(t, [[0], [0]])
+        val = M0.potential(t, [[0], [0]])
         assert val == approx(1 / 2 * (2 - 2 * np.exp(-(1 / 4) / t)))
 
-    assert IP.evaluate(1, [[0.5], [0]]) == approx(0.20935725027818456022)
+    assert M0.potential(1, [[0.5], [0]]) == approx(0.20935725027818456022)
 
-    IP = InitialPotential(mesh, lambda y: y[0]**2 + y[1]**2, quad_order=19)
+    M0 = InitialOperator(mesh, lambda y: y[0]**2 + y[1]**2)
     for t in [1, 0.5, 0.1]:
-        val = IP.evaluate(t, [[0], [0]])
+        val = M0.potential(t, [[0], [0]])
         assert val == approx(
             np.exp(-(1 / 4) / t) * (-1 - 4 * t + 4 * np.exp((1 / 4) / t) * t))
 
-    IP = InitialPotential(mesh,
-                          lambda y: np.sin(y[0]**2) * np.cos(y[1]**2),
-                          quad_order=19)
+    M0 = InitialOperator(mesh, lambda y: np.sin(y[0]**2) * np.cos(y[1]**2))
     for t in [1, 0.5, 0.1]:
-        val = IP.evaluate(t, [[0], [0]])
+        val = M0.potential(t, [[0], [0]])
         assert val == approx(
             -(-4 * np.exp(1 / 4 / t) * t + 4 * t * np.cos(1) + np.sin(1)) /
             (np.exp(1 / 4 / t) * (2 * (1 + 16 * t**2))))
@@ -36,15 +34,15 @@ def test_initial_potential_circle():
 
 def test_initial_potential_unit_square():
     mesh = MeshParametrized(UnitSquare())
-    IP = InitialPotential(mesh, lambda y: np.ones(y.shape[1]), quad_order=19)
+    M0 = InitialOperator(mesh, lambda y: np.ones(y.shape[1]))
 
     for t in [1, 0.5, 0.1, 0.05]:
-        val = IP.evaluate(t, [[0], [0]])
+        val = M0.potential(t, [[0], [0]])
         assert val == approx(1 / 4 * erf(1 / (2 * np.sqrt(t)))**2)
 
-    IP = InitialPotential(mesh, lambda y: y[0] - y[1] / 4, quad_order=19)
+    M0 = InitialOperator(mesh, lambda y: y[0] - y[1] / 4)
     for t in [1, 0.5, 0.1, 0.05]:
-        val = IP.evaluate(t, [[0], [0]])
+        val = M0.potential(t, [[0], [0]])
     assert val == approx(
         (3 * (-1 + np.exp(1 / 4 / t)) * np.sqrt(t) * erf(1 /
                                                          (2 * np.sqrt(t)))) /
@@ -54,18 +52,18 @@ def test_initial_potential_unit_square():
 def test_initial_potential_square():
     mesh = MeshParametrized(UnitSquare())
     mesh.uniform_refine()
-    IP = InitialPotential(mesh,
-                          u0=lambda y: np.ones(y.shape[1]),
-                          initial_mesh=UnitSquareBoundaryRefined)
+    M0 = InitialOperator(mesh,
+                         u0=lambda y: np.ones(y.shape[1]),
+                         initial_mesh=UnitSquareBoundaryRefined)
     elems = list(mesh.leaf_elements)
-    vec = IP.linform_vector()
+    vec = M0.linform_vector()
     for i, elem in enumerate(elems):
         if elem.time_interval[0] == 0:
             assert vec[i] == approx(0.0578798287400388022, abs=0, rel=1e-8)
         else:
             assert vec[i] == approx(0.023234887895444152863, abs=0, rel=1e-12)
 
-    _, elem_ip = IP.linform(elems[0])
+    _, elem_ip = M0.linform(elems[0])
     for elem, val in elem_ip:
         if elem.vertices[0].xy == (0, 0):
             assert val == approx(0.026593400385924482551, abs=0, rel=1e-8)
@@ -76,10 +74,10 @@ def test_initial_potential_square():
         elif elem.vertices[0].xy == (0.5, 0.5):
             assert val == approx(0.0069966430198107115389, abs=0, rel=1e-8)
 
-    IP = InitialPotential(mesh,
-                          u0=lambda y: y[0],
-                          initial_mesh=UnitSquareBoundaryRefined)
-    vec = IP.linform_vector()
+    M0 = InitialOperator(mesh,
+                         u0=lambda y: y[0],
+                         initial_mesh=UnitSquareBoundaryRefined)
+    vec = M0.linform_vector()
     for i, elem in enumerate(elems):
         if elem.time_interval[0] == 0.5 and elem.space_interval == (0., 0.5):
             assert vec[i] == approx(0.011284335403468743609, abs=0, rel=1e-12)
@@ -91,10 +89,10 @@ def test_initial_potential_square():
             assert vec[i] == approx(0.020441546057317420098, abs=0, rel=1e-8)
 
     # Test all values for u0(x,y) = sin(x) * y.
-    IP = InitialPotential(mesh,
-                          u0=lambda y: np.sin(y[0]) * y[1],
-                          initial_mesh=UnitSquareBoundaryRefined)
-    vec = IP.linform_vector()
+    M0 = InitialOperator(mesh,
+                         u0=lambda y: np.sin(y[0]) * y[1],
+                         initial_mesh=UnitSquareBoundaryRefined)
+    vec = M0.linform_vector()
     for i, elem in enumerate(elems):
         if elem.time_interval[0] == 0. and elem.space_interval == (0, 0.5):
             assert vec[i] == approx(0.0084268990247339470474, abs=0, rel=1e-8)
@@ -124,10 +122,10 @@ def test_initial_potential_square():
 
     # Test some values for u0(x,y) = sin(x) * y.
     mesh.uniform_refine()
-    IP = InitialPotential(mesh,
-                          u0=lambda y: np.sin(y[0]) * y[1],
-                          initial_mesh=UnitSquareBoundaryRefined)
-    vec = IP.linform_vector()
+    M0 = InitialOperator(mesh,
+                         u0=lambda y: np.sin(y[0]) * y[1],
+                         initial_mesh=UnitSquareBoundaryRefined)
+    vec = M0.linform_vector()
     elems = list(mesh.leaf_elements)
     for i, elem in enumerate(elems):
         if elem.time_interval[0] == 0. and elem.space_interval == (0, 0.25):
@@ -146,3 +144,21 @@ def test_initial_potential_square():
             assert vec[i] == approx(0.0072787492490388637853, abs=0, rel=1e-7)
         if elem.time_interval[0] == 0. and elem.space_interval == (1.75, 2):
             assert vec[i] == approx(0.0070246978081986050930, abs=0, rel=1e-6)
+
+
+def test_initial_potential_evaluate():
+    mesh = MeshParametrized(UnitSquare())
+    M0 = InitialOperator(bdr_mesh=mesh,
+                         u0=lambda y: np.sin(y[0]) * y[1],
+                         quad_eval=55)
+    x = np.array([[0.5], [0.5]])
+    assert M0.potential(1, np.array([[0.5], [0.5]])) == approx(
+        0.0175628125343357995877740924697, abs=0, rel=1e-15)
+    assert M0.potential(0.5, np.array([[0.5], [0.5]])) == approx(
+        0.0337504573274485763918544294309, abs=0, rel=1e-15)
+    assert M0.potential(0.1, np.array([[0.5], [0.5]])) == approx(
+        0.1254904823141527244648782241110, abs=0, rel=1e-12)
+    assert M0.potential(0.01, np.array([[0.5], [0.5]])) == approx(
+        0.237147179846976417036758053345, abs=0, rel=1e-12)
+    assert M0.potential(0.001, np.array([[0.5], [0.5]])) == approx(
+        0.239473176349241907505021205474, abs=0, rel=1e-4)

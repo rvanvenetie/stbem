@@ -204,5 +204,5 @@ def test_parametrized():
         for elem in leaves:
             assert elem.gamma_space is not None
             assert np.all(
-                gamma.eval(elem.vertices[0].x) == elem.gamma_space(
-                    elem.vertices[0].x))
+                gamma.eval(float(elem.vertices[0].x)) == elem.gamma_space(
+                    float(elem.vertices[0].x)))
