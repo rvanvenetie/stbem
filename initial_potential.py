@@ -157,13 +157,18 @@ class InitialOperator:
 
     def evaluate_mesh(self, t, x, initial_mesh):
         """ Evaluates (M_0 u_0)(t,x) for t,x using a meshed Omega. """
+        def f(y):
+            xy = x - y
+            xy_sqr = np.sum(xy**2, axis=0)
+            return 1. / (4 * np.pi * t) * np.exp(-xy_sqr /
+                                                 (4 * t)) * self.u0(y)
 
         ips = []
         for elem in initial_mesh.leaf_elements:
-            val = self.gauss_2d.integrate(f, elem.vertices[0].x,
-                                          elem.vertices[2].x,
-                                          elem.vertices[0].y,
-                                          elem.vertices[2].y)
+            val = self.gauss_2d.integrate(f, float(elem.vertices[0].x),
+                                          float(elem.vertices[2].x),
+                                          float(elem.vertices[0].y),
+                                          float(elem.vertices[2].y))
             ips.append((elem, val))
 
         result_mesh = math.fsum([val for elem, val in ips])

@@ -1,4 +1,5 @@
 import numpy as np
+from pytest import approx
 import matplotlib.pyplot as plt
 import math
 from mesh import Mesh, MeshParametrized
@@ -9,6 +10,7 @@ from single_layer import SingleLayerOperator
 import time
 from parametrization import Circle, UnitSquare, LShape
 from quadrature import gauss_quadrature_scheme, ProductScheme2D
+import quadpy
 
 
 def u(t, xy):
@@ -99,6 +101,16 @@ for k in range(10):
     Phi_cur = np.linalg.solve(mat, -M0_u0)
     print('Solving matrix took {}s'.format(time.time() - time_solve_begin))
 
+    # Check symmetry of the solution.
+    #calc_dict = {}
+    #for i, elem in enumerate(elems_cur):
+    #    t = elem.time_interval[0]
+    #    x = elem.space_interval[0] - math.floor(elem.space_interval[0])
+    #    if not (t, x) in calc_dict:
+    #        calc_dict[t, x] = Phi_cur[i]
+    #    else:
+    #        assert Phi_cur[i] == approx(calc_dict[t, x])
+
     # Plot the solution.
     N_time = 2**k
     N_space = 4 * 2**k
@@ -153,6 +165,7 @@ for k in range(10):
     mu = 1 / 2
     nu = 1 / 4
     gauss_2d = ProductScheme2D(gauss_quadrature_scheme(3))
+    #quad_scheme = quadpy.get_good_scheme(3)
     calc_dict = {}
     for i, elem in enumerate(elems_cur):
         # Evaluate the residual squared.
@@ -168,6 +181,11 @@ for k in range(10):
                 # Compare with rhs.
                 result[i] = VPhi + M0.evaluate(t, x)
             return result**2
+
+        # Create initial mesh
+        #c, d = elem.space_interval
+        #initial_mesh = UnitSquareBoundaryRefined(elem.gamma_space(c),
+        #                                         elem.gamma_space(d))
 
         err_estim_sqr[i] = (
             elem.h_t**(-2 * mu) + elem.h_x**(-2 * nu)) * gauss_2d.integrate(
