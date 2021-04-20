@@ -196,7 +196,6 @@ class SingleLayerOperator:
             vec[j] = self.potential(elem_trial, t, x)
         return vec
 
-    @profile
     def evaluate(self, elem_trial, t, x_hat, x=None):
         """ Evaluates (V 1_trial)(t, gamma(x_hat)) for t, x_hat in the param domain. """
         if t <= elem_trial.time_interval[0]: return 0
