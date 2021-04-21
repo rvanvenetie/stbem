@@ -103,7 +103,7 @@ def IP_rhs(j):
 
     if not tup in shared_dict:
         shared_dict[tup] = M0.linform(elem_test)[0]
-    M0_u0[j] = shared_dict[tup]
+    return shared_dict[tup]
 
 
 if __name__ == '__main__':
