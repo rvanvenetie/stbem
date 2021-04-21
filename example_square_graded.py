@@ -48,6 +48,7 @@ for k in range(10):
     mesh = MeshParametrized(UnitSquare(),
                             initial_space_mesh=mesh_space,
                             initial_time_mesh=mesh_time)
+    print(mesh.gmsh(), file=open("./data/{}.gmsh".format(mesh.md5()), "w"))
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
                          initial_mesh=UnitSquareBoundaryRefined)

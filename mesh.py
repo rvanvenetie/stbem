@@ -327,13 +327,14 @@ class Mesh:
             len(self.vertices))
         if not use_gamma:
             for vertex in self.vertices:
-                result += "{} {} {} 0\n".format(vertex.idx + 1, vertex.t,
-                                                vertex.x)
+                result += "{} {} {} 0\n".format(vertex.idx + 1,
+                                                float(vertex.t),
+                                                float(vertex.x))
         else:
             for vertex in self.vertices:
                 x, y = self.gamma_space.eval(vertex.x)[:, 0]
-                result += "{} {} {} {}\n".format(vertex.idx + 1, vertex.t, x,
-                                                 y)
+                result += "{} {} {} {}\n".format(vertex.idx + 1,
+                                                 float(vertex.t), x, y)
         result += "$EndNodes\n$Elements\n{}\n".format(len(self.leaf_elements))
         for idx, element in enumerate(self.leaf_elements):
             result += "{} 3 2 0 0 {} {} {} {}\n".format(
