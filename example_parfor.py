@@ -107,8 +107,9 @@ def IP_rhs(j):
 
 
 if __name__ == '__main__':
-    N_procs = 4
+    N_procs = mp.cpu_count()
     mp.set_start_method('fork')
+    print('Running parallel with {} threads.'.format(N_procs))
     dofs = []
     errs_l2 = []
     errs_estim = []
