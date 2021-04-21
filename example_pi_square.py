@@ -23,7 +23,7 @@ def u0(xy):
 
 def u_neumann(t, x_hat):
     """ evaluates the neumann trace along the lateral boundary. """
-    return -np.exp(-2 * t) * np.sin((x_hat % 1))
+    return -np.exp(-2 * t) * np.sin((x_hat % np.pi))
 
 
 mesh = MeshParametrized(PiSquare())
@@ -57,13 +57,14 @@ for k in range(10):
             for j, elem_trial in enumerate(elems_cur):
                 if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
                     continue
-                a, _, b, _ = *elem_test.time_interval, *elem_trial.time_interval
-                c, _, d, _ = *elem_test.space_interval, *elem_trial.space_interval
-                tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
-                if not tup in calc_dict:
-                    calc_dict[tup] = SL.bilform(elem_trial, elem_test)
+                #a, _, b, _ = *elem_test.time_interval, *elem_trial.time_interval
+                #c, _, d, _ = *elem_test.space_interval, *elem_trial.space_interval
+                #tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
+                ##if not tup in calc_dict:
+                #if True:
+                #    calc_dict[tup] = SL.bilform(elem_trial, elem_test)
 
-                mat[i, j] = calc_dict[tup]
+                mat[i, j] = SL.bilform(elem_trial, elem_test)
         try:
             np.save(cache_SL_fn, mat)
             print("Stored Single Layer to {}".format(cache_SL_fn))
@@ -82,12 +83,13 @@ for k in range(10):
         calc_dict = {}
         M0_u0 = np.zeros(shape=N)
         for j, elem_test in enumerate(elems_cur):
-            a = elem_test.space_interval[0] - math.floor(
-                elem_test.space_interval[0])
-            tup = (elem_test.time_interval[0], a)
-            if not tup in calc_dict:
-                calc_dict[tup] = M0.linform(elem_test)
-            M0_u0[j], _ = calc_dict[tup]
+            #a = elem_test.space_interval[0] - math.floor(
+            #    elem_test.space_interval[0])
+            #tup = (elem_test.time_interval[0], a)
+            ##if not tup in calc_dict:
+            #if True:
+            #    calc_dict[tup] = M0.linform(elem_test)
+            M0_u0[j], _ = M0.linform(elem_test)
         np.save(cache_M0_fn, M0_u0)
         print('Calculating initial potential took {}s'.format(time.time() -
                                                               time_rhs_begin))
@@ -151,15 +153,18 @@ for k in range(10):
         #initial_mesh = UnitSquareBoundaryRefined(elem.gamma_space(c),
         #                                         elem.gamma_space(d))
 
-        t = elem.time_interval[0]
-        x = elem.space_interval[0] - math.floor(elem.space_interval[0])
-        if not (t, x) in calc_dict:
-            calc_dict[t, x] = (elem.h_t**(-2 * mu) +
-                               elem.h_x**(-2 * nu)) * gauss_2d.integrate(
-                                   residual_squared, *elem.time_interval, *
-                                   elem.space_interval)
+        #t = elem.time_interval[0]
+        #x = elem.space_interval[0] - math.floor(elem.space_interval[0])
+        ##if not (t, x) in calc_dict:
+        #if True:
+        #    calc_dict[t, x] = (elem.h_t**(-2 * mu) +
+        #                       elem.h_x**(-2 * nu)) * gauss_2d.integrate(
+        #                           residual_squared, *elem.time_interval, *
+        #                           elem.space_interval)
 
-        err_estim_sqr[i] = calc_dict[t, x]
+        err_estim_sqr[i] = (
+            elem.h_t**(-2 * mu) + elem.h_x**(-2 * nu)) * gauss_2d.integrate(
+                residual_squared, *elem.time_interval, *elem.space_interval)
 
     errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
     print('Error estimation of weighted residual of order {} took {}s'.format(
