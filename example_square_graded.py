@@ -72,8 +72,8 @@ for k in range(10):
             for j, elem_trial in enumerate(elems_cur):
                 if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
                     continue
-                a, _, b, _ = *elem_test.time_interval, *elem_trial.time_interval
-                c, _, d, _ = *elem_test.space_interval, *elem_trial.space_interval
+                a, b = elem_test.vertices[0].t, elem_trial.vertices[0].t
+                c, d = elem_test.vertices[0].x, elem_trial.vertices[0].x
                 tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
                 if not tup in calc_dict:
                     calc_dict[tup] = SL.bilform(elem_trial, elem_test)
@@ -98,9 +98,8 @@ for k in range(10):
         calc_dict = {}
         M0_u0 = np.zeros(shape=N)
         for j, elem_test in enumerate(elems_cur):
-            a = elem_test.space_interval[0] - math.floor(
-                elem_test.space_interval[0])
-            tup = (elem_test.time_interval[0], a)
+            a = elem_test.vertices[0].x - math.floor(elem_test.vertices[0].x)
+            tup = (elem_test.vertices[0].t, a)
             if not tup in calc_dict:
                 calc_dict[tup] = M0.linform(elem_test)
             M0_u0[j], _ = calc_dict[tup]
@@ -130,8 +129,6 @@ for k in range(10):
                                                                 time_l2_begin))
     # Calculate the weighted l2 error of the residual.
     err_estim_sqr = np.zeros(N)
-    mu = 1 / 2
-    nu = 1 / 4
     err_order = 3
     gauss_2d = ProductScheme2D(gauss_quadrature_scheme(err_order))
     #quad_scheme = quadpy.get_good_scheme(3)
@@ -157,10 +154,10 @@ for k in range(10):
         #                                         elem.gamma_space(d))
 
         t = elem.time_interval[0]
-        x = elem.space_interval[0] - math.floor(elem.space_interval[0])
+        x = elem.vertices[0].x - math.floor(elem.vertices[0].x)
         if not (t, x) in calc_dict:
-            calc_dict[t, x] = (elem.h_x**(-2 * mu) +
-                               elem.h_t**(-2 * nu)) * gauss_2d.integrate(
+            calc_dict[t, x] = (elem.h_x**(-1) +
+                               elem.h_t**(-0.5)) * gauss_2d.integrate(
                                    residual_squared, *elem.time_interval, *
                                    elem.space_interval)
 
@@ -171,8 +168,17 @@ for k in range(10):
         err_order,
         time.time() - time_l2_begin))
 
-    print('N={}\terr_estim={}'.format(N, errs_estim[-1]))
-    print('N={}\terr_l2={}'.format(N, errs_l2[-1]))
+    if k:
+        rates_estim = np.log(
+            np.array(errs_estim[1:]) / np.array(errs_estim[:-1])) / np.log(
+                np.array(dofs[1:]) / np.array(dofs[:-1]))
+        rates_l2 = np.log(
+            np.array(errs_l2[1:]) / np.array(errs_l2[:-1])) / np.log(
+                np.array(dofs[1:]) / np.array(dofs[:-1]))
+    else:
+        rates_estim = []
+        rates_l2 = []
 
-    print('\ndofs={}\nerrs_l2={}\nerr_estim={}\n\n------'.format(
-        dofs, errs_l2, errs_estim))
+    print(
+        '\ndofs={}\nerrs_l2={}\nerr_estim={}\n\nrates_l2={}\nrates_estim={}\n------'
+        .format(dofs, errs_l2, errs_estim, rates_l2, rates_estim))
