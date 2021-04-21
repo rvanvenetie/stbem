@@ -181,6 +181,6 @@ for k in range(10):
         rates_l2 = []
 
     print(
-        '\ndofs={}\nerrs_l2={}\nerr_estim={}\nrates_l2={}\n\nrates_estim={}\n------'
+        '\ndofs={}\nerrs_l2={}\nerr_estim={}\n\nrates_l2={}\nrates_estim={}\n------'
         .format(dofs, errs_l2, errs_estim, rates_l2, rates_estim))
     mesh.uniform_refine()
