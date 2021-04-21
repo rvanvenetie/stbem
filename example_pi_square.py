@@ -169,6 +169,18 @@ for k in range(10):
     print('N={}\terr_estim={}'.format(N, errs_estim[-1]))
     print('N={}\terr_l2={}'.format(N, errs_l2[-1]))
 
-    print('\ndofs={}\nerrs_l2={}\nerr_estim={}\n------'.format(
-        dofs, errs_l2, errs_estim))
+    if k:
+        rates_estim = np.log(
+            np.array(errs_estim[1:]) / np.array(errs_estim[:-1])) / np.log(
+                np.array(dofs[1:]) / np.array(dofs[:-1]))
+        rates_l2 = np.log(
+            np.array(errs_l2[1:]) / np.array(errs_l2[:-1])) / np.log(
+                np.array(dofs[1:]) / np.array(dofs[:-1]))
+    else:
+        rates_estim = []
+        rates_l2 = []
+
+    print(
+        '\ndofs={}\nerrs_l2={}\nerr_estim={}\nrates_l2={}\n\nrates_estim={}\n------'
+        .format(dofs, errs_l2, errs_estim, rates_l2, rates_estim))
     mesh.uniform_refine()
