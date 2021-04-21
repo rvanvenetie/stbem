@@ -349,7 +349,7 @@ class MeshParametrized(Mesh):
     def __init__(self,
                  gamma_space,
                  initial_space_mesh=None,
-                 initial_time_mesh=None):
+                 initial_time_mesh=[0, 1]):
         assert isinstance(gamma_space, PiecewiseParametrization)
         if initial_space_mesh is None:
             initial_space_mesh = gamma_space.pw_start

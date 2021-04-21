@@ -64,7 +64,7 @@ class InitialOperator:
 
         n0 = v0.xy_np
         n1 = v1.xy_np
-        assert d - c == np.linalg.norm(n0 - n1)
+        math.isclose(d - c, np.linalg.norm(n0 - n1))
 
         id_bdr = 0
         touch_bdr = 0
@@ -75,7 +75,7 @@ class InitialOperator:
             if v0 in elem.vertices and v1 in elem.vertices:
                 id_bdr += 1
                 h = d - c
-                assert elem.diam == h
+                math.isclose(elem.diam, h)
 
                 # Element has an edge v0 <-> v1. Let v2 be the unique vertex
                 # having an edge v0 <-> v2.

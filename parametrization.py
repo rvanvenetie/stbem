@@ -152,6 +152,26 @@ class UnitSquare(PiecewisePolygon):
         #)
 
 
+class PiSquare(PiecewisePolygon):
+    def __init__(self):
+        v0 = np.array([0, 0])
+        v1 = np.array([np.pi, 0])
+        v2 = np.array([np.pi, np.pi])
+        v3 = np.array([0, np.pi])
+        super().__init__(vertices=[v0, v1, v2, v3, v0])
+
+    def integrator(self, poly_order):
+        #scheme = quadpy.c2.product(quadpy.c1.gauss_legendre(poly_order))
+        scheme = quadrature.ProductScheme2D(
+            quadrature.gauss_quadrature_scheme(poly_order))
+        return lambda f: scheme.integrate(f, 0, np.pi, 0, np.pi)
+        #scheme = quadpy.c2.get_good_scheme(poly_order)
+        #return lambda f: scheme.integrate(
+        #    f,
+        #    [[[0.0, 0.0], [1.0, 0.0]], [[0.0, 1.0], [1.0, 1.0]]],
+        #)
+
+
 class LShape(PiecewisePolygon):
     def __init__(self):
         v0 = np.array([0, 0])

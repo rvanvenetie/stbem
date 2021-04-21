@@ -92,9 +92,10 @@ class InitialMesh:
             for edge in elem.edges:
                 self.nbrs[edge] = elem
 
-    def vertex_from_coords(self, xy):
+    def vertex_from_coords(self, xy, eps=1e-15):
         for vtx in self.vertices:
-            if vtx.x == xy[0] and vtx.y == xy[1]: return vtx
+            if abs(vtx.x - xy[0]) <= eps and abs(vtx.y - xy[1]) <= eps:
+                return vtx
         return None
 
     def bisect_edge(self, a, b):
@@ -169,7 +170,7 @@ class InitialMesh:
         for elem in leaves:
             self.refine(elem)
 
-    def refine_msh_bdr(self, v0, v1):
+    def refine_msh_bdr(self, v0, v1, eps=1e-15):
         """ Locally refines the mesh until it contains an element (touching the boundary)
             that has an edge that coincides with the given edge v0 <--> v1. """
         # Cast the input to a vector.
@@ -193,18 +194,22 @@ class InitialMesh:
             # Find the element that contains edge v0 -- v1.
             for elem in children:
                 for a, b in elem.edges:
-                    # Find corresponding x,y coords, and sort them.
-                    va, vb = sorted([a.xy, b.xy])
+                    if a.xy <= b.xy:
+                        va, vb = a.xy_np, b.xy_np
+                    else:
+                        va, vb = b.xy_np, a.xy_np
 
                     # Check that we lie on correct edge.
                     if not (v0[axis] == va[axis] == vb[axis]):
                         continue
 
                     # Check whether v0 v1 is contained in other edge.
-                    if va[n_axis] <= v0[n_axis] <= v1[n_axis] <= vb[n_axis]:
+                    assert v0[n_axis] <= v1[n_axis]
+                    if va[n_axis] - eps <= v0[n_axis] <= v1[
+                            n_axis] <= vb[n_axis] + eps:
                         # If this elements edge coincides with v0, v1, return!
-                        if va[n_axis] == v0[n_axis] and v1[n_axis] == vb[
-                                n_axis]:
+                        if abs(va[n_axis] - v0[n_axis]) <= eps and abs(
+                                v1[n_axis] - vb[n_axis]) <= eps:
                             return elem
                         parent = elem
 
@@ -233,8 +238,20 @@ def UnitSquare():
                        elements=[(0, 1, 2, 3)])
 
 
+def PiSquare():
+    return InitialMesh(vertices=[(0, 0), (np.pi, 0), (np.pi, np.pi),
+                                 (0, np.pi)],
+                       elements=[(0, 1, 2, 3)])
+
+
 def UnitSquareBoundaryRefined(v0, v1):
     mesh = UnitSquare()
+    mesh.refine_msh_bdr(v0, v1)
+    return mesh
+
+
+def PiSquareBoundaryRefined(v0, v1):
+    mesh = PiSquare()
     mesh.refine_msh_bdr(v0, v1)
     return mesh
 
