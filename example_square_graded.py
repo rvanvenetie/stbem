@@ -153,8 +153,8 @@ for k in range(10):
         #initial_mesh = UnitSquareBoundaryRefined(elem.gamma_space(c),
         #                                         elem.gamma_space(d))
 
-        t = elem.time_interval[0]
-        x = elem.vertices[0].x - math.floor(elem.vertices[0].x)
+        t = elem.vertices[0].t
+        x = elem.vertices[0].x % 1
         if not (t, x) in calc_dict:
             calc_dict[t, x] = (elem.h_x**(-1) +
                                elem.h_t**(-0.5)) * gauss_2d.integrate(
