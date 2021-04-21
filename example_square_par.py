@@ -85,14 +85,14 @@ def SL_mat_row(i):
     for j, elem_trial in enumerate(elems_cur):
         if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
             continue
-        a, b = elem_test.vertices[0].t, elem_trial.vertices[0].t
-        c, d = elem_test.vertices[0].x, elem_trial.vertices[0].x
-        tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
-        if not tup in shared_dict:
-            shared_dict[tup] = SL.bilform(elem_trial, elem_test)
+        #a, b = elem_test.vertices[0].t, elem_trial.vertices[0].t
+        #c, d = elem_test.vertices[0].x, elem_trial.vertices[0].x
+        #tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
+        #if not tup in shared_dict:
+        #    shared_dict[tup] = SL.bilform(elem_trial, elem_test)
 
-        row[j] = shared_dict[tup]
-        #row[j] = SL.bilform(elem_trial, elem_test)
+        #row[j] = shared_dict[tup]
+        row[j] = SL.bilform(elem_trial, elem_test)
     return row
 
 
