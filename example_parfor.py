@@ -140,7 +140,6 @@ if __name__ == '__main__':
         SL = SingleLayerOperator(mesh)
         dofs.append(N)
 
-        pool = mp.Pool(N_procs)
         cache_SL_fn = "{}/SL_graded_parfor_dofs_{}_{}.npy".format(
             'data', N, mesh.md5())
         try:
@@ -150,7 +149,8 @@ if __name__ == '__main__':
             calc_dict = {}
             time_mat_begin = time.time()
             mat = np.zeros((N, N))
-            for i, row in enumerate(pool.map(SL_mat_row, range(N))):
+            for i, row in enumerate(
+                    mp.Pool(N_procs).map(SL_mat_row, range(N))):
                 mat[i, :] = row
             try:
                 np.save(cache_SL_fn, mat)
@@ -169,7 +169,7 @@ if __name__ == '__main__':
             print("Loaded Initial Operator from file {}".format(cache_M0_fn))
         except:
             calc_dict = {}
-            M0_u0 = np.array(pool.map(IP_rhs, range(N)))
+            M0_u0 = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
             np.save(cache_M0_fn, M0_u0)
             print('Calculating initial potential took {}s'.format(
                 time.time() - time_rhs_begin))
