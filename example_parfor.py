@@ -53,8 +53,9 @@ def error_estim_l2(i):
 
     t = elem.vertices[0].t
     x = elem.vertices[0].x % 1
-    if (t, x) in calc_dict:
-        return calc_dict[t, x]
+
+    #if (t, x) in calc_dict:
+    #    return calc_dict[t, x]
 
     # Evaluate the residual squared.
     def residual_squared(tx):
@@ -74,7 +75,7 @@ def error_estim_l2(i):
 
     result = (elem.h_x**(-1) + elem.h_t**(-0.5)) * gauss_2d.integrate(
         residual_squared, *elem.time_interval, *elem.space_interval)
-    calc_dict[t, x] = result
+    #calc_dict[t, x] = result
     return result
 
 
@@ -86,11 +87,23 @@ def SL_mat_row(i):
             continue
         a, b = elem_test.vertices[0].t, elem_trial.vertices[0].t
         c, d = elem_test.vertices[0].x, elem_trial.vertices[0].x
-        tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
-        if not tup in calc_dict:
-            calc_dict[tup] = SL.bilform(elem_trial, elem_test)
-        row[j] = calc_dict[tup]
+        #tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
+        #if not tup in calc_dict:
+        #    calc_dict[tup] = SL.bilform(elem_trial, elem_test)
+        #row[j] = calc_dict[tup]
+        row[j] = SL.bilform(elem_trial, elem_test)
     return row
+
+
+def IP_rhs(j):
+    elem_test = elems_cur[j]
+    return M0.linform(elem_test)[0]
+    #a = elem_test.vertices[0].x - math.floor(
+    #    elem_test.vertices[0].x)
+    #tup = (elem_test.vertices[0].t, a)
+    #if not tup in calc_dict:
+    #    calc_dict[tup] = M0.linform(elem_test)
+    #M0_u0[j], _ = calc_dict[tup]
 
 
 if __name__ == '__main__':
@@ -127,6 +140,7 @@ if __name__ == '__main__':
         SL = SingleLayerOperator(mesh)
         dofs.append(N)
 
+        pool = mp.Pool(N_procs)
         cache_SL_fn = "{}/SL_graded_parfor_dofs_{}_{}.npy".format(
             'data', N, mesh.md5())
         try:
@@ -136,8 +150,8 @@ if __name__ == '__main__':
             calc_dict = {}
             time_mat_begin = time.time()
             mat = np.zeros((N, N))
-            for i, row in enumerate(mp.Pool(N_procs).imap(range(N))):
-                mat[i, j] = row
+            for i, row in enumerate(pool.map(SL_mat_row, range(N))):
+                mat[i, :] = row
             try:
                 np.save(cache_SL_fn, mat)
                 print("Stored Single Layer to {}".format(cache_SL_fn))
@@ -155,14 +169,7 @@ if __name__ == '__main__':
             print("Loaded Initial Operator from file {}".format(cache_M0_fn))
         except:
             calc_dict = {}
-            M0_u0 = np.zeros(shape=N)
-            for j, elem_test in enumerate(elems_cur):
-                a = elem_test.vertices[0].x - math.floor(
-                    elem_test.vertices[0].x)
-                tup = (elem_test.vertices[0].t, a)
-                if not tup in calc_dict:
-                    calc_dict[tup] = M0.linform(elem_test)
-                M0_u0[j], _ = calc_dict[tup]
+            M0_u0 = np.array(pool.map(IP_rhs, range(N)))
             np.save(cache_M0_fn, M0_u0)
             print('Calculating initial potential took {}s'.format(
                 time.time() - time_rhs_begin))
@@ -192,10 +199,8 @@ if __name__ == '__main__':
         err_order = 3
         gauss_2d = ProductScheme2D(gauss_quadrature_scheme(err_order))
 
-        manager = multiprocessing.Manager()
-        calc_dict = manager.dict()
         err_estim_sqr = np.array(
-            multiprocessing.Pool(N_procs).map(error_estim_l2, range(N)))
+            mp.Pool(N_procs).map(error_estim_l2, range(N)))
         errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
         print('Error estimation of weighted residual of order {} took {}s'.
               format(err_order,
