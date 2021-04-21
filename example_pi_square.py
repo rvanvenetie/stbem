@@ -1,5 +1,6 @@
 import numpy as np
 from pytest import approx
+from scipy.special import erf, erfc
 import matplotlib.pyplot as plt
 import math
 from mesh import Mesh, MeshParametrized
@@ -19,6 +20,21 @@ def u(t, xy):
 
 def u0(xy):
     return np.sin(xy[0]) * np.sin(xy[1])
+
+
+def M0u0(t, xy):
+    x = xy[0]
+    y = xy[1]
+    return ((-(1 / 16)) * np.exp((-1j) * (x + y) - 2 * t) * (-1 + erf(
+        (x - 2 * 1j * t) / (2 * np.sqrt(t))) + np.exp(2 * 1j * x) * (-erf(
+            (x + 2 * 1j * t) / (2 * np.sqrt(t))) + erf(
+                (x - np.pi + 2 * 1j * t) / (2 * np.sqrt(t)))) + erfc(
+                    (x - np.pi - 2 * 1j * t) / (2 * np.sqrt(t)))) *
+            (-1 + erf(
+                (y - 2 * 1j * t) / (2 * np.sqrt(t))) + np.exp(2 * 1j * y) *
+             (-erf((y + 2 * 1j * t) / (2 * np.sqrt(t))) + erf(
+                 (y - np.pi + 2 * 1j * t) / (2 * np.sqrt(t)))) + erfc(
+                     (y - np.pi - 2 * 1j * t) / (2 * np.sqrt(t))))).real
 
 
 def u_neumann(t, x_hat):
@@ -102,12 +118,12 @@ for k in range(10):
     # Check symmetry of the solution.
     calc_dict = {}
     for i, elem in enumerate(elems_cur):
-        t = elem.time_interval[0]
-        x = elem.space_interval[0] - math.floor(elem.space_interval[0])
+        t = elem.vertices[0].t
+        x = elem.vertices[0].x % np.pi
         if not (t, x) in calc_dict:
             calc_dict[t, x] = Phi_cur[i]
         else:
-            assert Phi_cur[i] == approx(calc_dict[t, x])
+            assert Phi_cur[i] == approx(calc_dict[t, x], abs=0, rel=1e-5)
 
     # Estimate the l2 error of the neumann trace.
     time_l2_begin = time.time()
@@ -144,19 +160,21 @@ for k in range(10):
                     VPhi += Phi_cur[j] * SL.evaluate(elem_trial, t, x_hat, x)
 
                 # Compare with rhs.
-                result[i] = VPhi + M0.evaluate(t, x)
+                #result[i] = VPhi + M0.evaluate_mesh(t, x, initial_mesh)
+                result[i] = VPhi + M0u0(t, x)
+
             return result**2
 
         # Create initial mesh
         #c, d = elem.space_interval
-        #initial_mesh = UnitSquareBoundaryRefined(elem.gamma_space(c),
-        #                                         elem.gamma_space(d))
+        #initial_mesh = PiSquareBoundaryRefined(elem.gamma_space(c),
+        #                                       elem.gamma_space(d))
 
-        t = elem.time_interval[0]
-        x = elem.space_interval[0] % np.pi
+        t = elem.vertices[0].t
+        x = elem.vertices[0].x % np.pi
         if not (t, x) in calc_dict:
-            calc_dict[t, x] = (elem.h_x**(-2 * mu) +
-                               elem.h_t**(-2 * nu)) * gauss_2d.integrate(
+            calc_dict[t, x] = (elem.h_x**(-1) +
+                               elem.h_t**(-0.5)) * gauss_2d.integrate(
                                    residual_squared, *elem.time_interval, *
                                    elem.space_interval)
         err_estim_sqr[i] = calc_dict[t, x]
