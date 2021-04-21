@@ -1,5 +1,5 @@
 import numpy as np
-import multiprocessing
+import multiprocessing as mp
 from scipy.special import erf, erfc
 from fractions import Fraction
 from pytest import approx
@@ -78,8 +78,24 @@ def error_estim_l2(i):
     return result
 
 
+def SL_mat_row(i):
+    elem_test = elems_cur[i]
+    row = np.zeros(N)
+    for j, elem_trial in enumerate(elems_cur):
+        if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
+            continue
+        a, b = elem_test.vertices[0].t, elem_trial.vertices[0].t
+        c, d = elem_test.vertices[0].x, elem_trial.vertices[0].x
+        tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
+        if not tup in calc_dict:
+            calc_dict[tup] = SL.bilform(elem_trial, elem_test)
+        row[j] = calc_dict[tup]
+    return row
+
+
 if __name__ == '__main__':
-    multiprocessing.set_start_method('fork')
+    N_procs = 4
+    mp.set_start_method('fork')
     dofs = []
     errs_l2 = []
     errs_estim = []
@@ -111,7 +127,7 @@ if __name__ == '__main__':
         SL = SingleLayerOperator(mesh)
         dofs.append(N)
 
-        cache_SL_fn = "{}/SL_graded_fast_dofs_{}_{}.npy".format(
+        cache_SL_fn = "{}/SL_graded_parfor_dofs_{}_{}.npy".format(
             'data', N, mesh.md5())
         try:
             mat = np.load(cache_SL_fn)
@@ -120,18 +136,8 @@ if __name__ == '__main__':
             calc_dict = {}
             time_mat_begin = time.time()
             mat = np.zeros((N, N))
-            for i, elem_test in enumerate(elems_cur):
-                for j, elem_trial in enumerate(elems_cur):
-                    if elem_test.time_interval[1] <= elem_trial.time_interval[
-                            0]:
-                        continue
-                    a, b = elem_test.vertices[0].t, elem_trial.vertices[0].t
-                    c, d = elem_test.vertices[0].x, elem_trial.vertices[0].x
-                    tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
-                    if not tup in calc_dict:
-                        calc_dict[tup] = SL.bilform(elem_trial, elem_test)
-
-                    mat[i, j] = calc_dict[tup]
+            for i, row in enumerate(mp.Pool(N_procs).imap(range(N))):
+                mat[i, j] = row
             try:
                 np.save(cache_SL_fn, mat)
                 print("Stored Single Layer to {}".format(cache_SL_fn))
@@ -142,7 +148,7 @@ if __name__ == '__main__':
 
         # Calculate initial potential.
         time_rhs_begin = time.time()
-        cache_M0_fn = "{}/M0_graded_fast_dofs_{}_{}.npy".format(
+        cache_M0_fn = "{}/M0_graded_parfor_dofs_{}_{}.npy".format(
             'data', N, mesh.md5())
         try:
             M0_u0 = np.load(cache_M0_fn)
@@ -189,7 +195,7 @@ if __name__ == '__main__':
         manager = multiprocessing.Manager()
         calc_dict = manager.dict()
         err_estim_sqr = np.array(
-            multiprocessing.Pool(2).map(error_estim_l2, range(N)))
+            multiprocessing.Pool(N_procs).map(error_estim_l2, range(N)))
         errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
         print('Error estimation of weighted residual of order {} took {}s'.
               format(err_order,
