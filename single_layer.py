@@ -31,8 +31,7 @@ def g(a, b):
     if a <= b:
         return noop
     z = a - b
-    a_z = alpha(z)
-    return lambda x: FPI_INV * expi(-a_z(x))
+    return lambda x: FPI_INV * expi(-np.sum(x**2, axis=0) / (4 * z))
 
 
 def f(a, b):
@@ -202,8 +201,17 @@ class SingleLayerOperator:
 
         # Calculate the time integrated kernel.
         if x is None: x = self.mesh.gamma_space.eval(x_hat)
-        G_time = time_integrated_kernel(t, *elem_trial.time_interval)
-        G_time_parametrized = lambda y: G_time(x - elem_trial.gamma_space(y))
+
+        def G_time_parametrized(y_hat):
+            xy = (x - elem_trial.gamma_space(y_hat))**2
+            xy = xy[0] + xy[1]
+            a, b = elem_trial.time_interval
+            if t <= b:
+                return -FPI_INV * expi(-xy / (4 * (t - a)))
+            else:
+                return FPI_INV * (expi(-xy / (4 * (t - b))) - expi(-xy /
+                                                                   (4 *
+                                                                    (t - a))))
 
         # Integrate. Check where singularity lies, i.e. for y = x_hat.
         a, b = elem_trial.space_interval

@@ -19,9 +19,11 @@ def line(a, b, x_start=0):
     norm = np.linalg.norm(b - a)
     direct = (b - a) / norm
 
+    direct = np.copy(direct.reshape(2, 1))
+    a = np.copy(a.reshape(2, 1))
+
     def fun(x_hat):
-        x_hat = x_hat - x_start
-        return np.vstack([x_hat * direct[0] + a[0], x_hat * direct[1] + a[1]])
+        return (x_hat - x_start) * direct + a
 
     return fun, norm
 
