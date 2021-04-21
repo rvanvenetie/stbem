@@ -159,8 +159,8 @@ for k in range(10):
         t = elem.time_interval[0]
         x = elem.space_interval[0] - math.floor(elem.space_interval[0])
         if not (t, x) in calc_dict:
-            calc_dict[t, x] = (elem.h_t**(-2 * mu) +
-                               elem.h_x**(-2 * nu)) * gauss_2d.integrate(
+            calc_dict[t, x] = (elem.h_x**(-2 * mu) +
+                               elem.h_t**(-2 * nu)) * gauss_2d.integrate(
                                    residual_squared, *elem.time_interval, *
                                    elem.space_interval)
 
