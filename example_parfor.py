@@ -150,7 +150,7 @@ if __name__ == '__main__':
             time_mat_begin = time.time()
             mat = np.zeros((N, N))
             for i, row in enumerate(
-                    mp.Pool(N_procs).map(SL_mat_row, range(N))):
+                    mp.Pool(N_procs).imap(SL_mat_row, range(N))):
                 mat[i, :] = row
             try:
                 np.save(cache_SL_fn, mat)
