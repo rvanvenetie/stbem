@@ -99,12 +99,11 @@ if __name__ == '__main__':
     h_x = 2
     for k in range(10):
         h_x = h_x / 2
-        h_t = h_x**(6 / 5)
+        h_t = h_x  #**(6 / 5)
         N_x = 4 * round(1 / h_x)
         N_t = round(1 / h_t)
         mesh_space = [Fraction(4 * j, N_x) for j in range(N_x + 1)]
         mesh_time = [Fraction(j, N_t) for j in range(N_t + 1)]
-        print(mesh_space)
 
         mesh = MeshParametrized(UnitSquare(),
                                 initial_space_mesh=mesh_space,
