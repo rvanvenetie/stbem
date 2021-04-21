@@ -156,45 +156,62 @@ class Element:
 
 
 class Mesh:
-    def __init__(self, glue_space=False, initial_space_mesh=[0, 1]):
+    def __init__(self,
+                 glue_space=False,
+                 initial_space_mesh=[0, 1],
+                 initial_time_mesh=[0, 1]):
         self.glue_space = glue_space
 
         # Generate all vertices on both time boundaries.
         vertices = []
-        for i, x in enumerate(initial_space_mesh):
-            vertices.extend([
-                Vertex(t=Fraction(0), x=Fraction(x), idx=2 * i),
-                Vertex(t=Fraction(1), x=Fraction(x), idx=2 * i + 1)
-            ])
+        for j, t in enumerate(initial_time_mesh):
+            for i, x in enumerate(initial_space_mesh):
+                vertices.append(
+                    Vertex(t=Fraction(t), x=Fraction(x), idx=len(vertices)))
 
         # Generate all the necessary elements + edges.
         roots = []
-        for i in range(len(initial_space_mesh) - 1):
-            # Create four edges and the element.
-            e1 = Edge(vertices=(vertices[2 * i], vertices[2 * i + 2]))
-            e2 = Edge(vertices=(vertices[2 * i + 2], vertices[2 * i + 3]))
-            e3 = Edge(vertices=(vertices[2 * i + 3], vertices[2 * i + 1]))
-            e4 = Edge(vertices=(vertices[2 * i + 1], vertices[2 * i]))
-            roots.append(Element(edges=[e1, e2, e3, e4], levels=(0, 0)))
+        N_t = len(initial_time_mesh) - 1
+        N_x = len(initial_space_mesh) - 1
+        for j in range(N_t):
+            for i in range(N_x):
+                v0 = vertices[j * len(initial_space_mesh) + i]
+                v1 = vertices[j * len(initial_space_mesh) + i + 1]
+                v2 = vertices[(j + 1) * len(initial_space_mesh) + i + 1]
+                v3 = vertices[(j + 1) * len(initial_space_mesh) + i]
 
-            # Set boundary edges correctly.
-            e1.on_boundary = True
-            e3.on_boundary = True
-            if (i == 0): e4.on_boundary = True
-            if (i + 2 == len(initial_space_mesh)): e2.on_boundary = True
+                # Create four edges and the element.
+                e1 = Edge(vertices=(v0, v1))
+                e2 = Edge(vertices=(v1, v2))
+                e3 = Edge(vertices=(v2, v3))
+                e4 = Edge(vertices=(v3, v0))
+                roots.append(Element(edges=[e1, e2, e3, e4], levels=(0, 0)))
 
-            # Set the middle edge nbrs correctly.
-            if i > 0:
-                roots[i - 1].edges[1].nbr_edge = roots[i].edges[3]
-                roots[i].edges[3].nbr_edge = roots[i - 1].edges[1]
+                # Set boundary edges correctly.
+                if j == 0: e1.on_boundary = True
+                if i + 1 == N_x: e2.on_boundary = True
+                if i == 0: e4.on_boundary = True
+                if j + 1 == N_t: e3.on_boundary = True
 
-        # Glue the outside time edges in case we have a closed manifold.
-        if glue_space:
-            roots[0].edges[3].glued = True
-            roots[-1].edges[1].glued = True
+                # Set the space edge nbrs correctly.
+                if i > 0:
+                    roots[-2].edges[1].nbr_edge = roots[-1].edges[3]
+                    roots[-1].edges[3].nbr_edge = roots[-2].edges[1]
 
-            roots[0].edges[3].nbr_edge = roots[-1].edges[1]
-            roots[-1].edges[1].nbr_edge = roots[0].edges[3]
+                # Set time edge nbrs correctly.
+                if j > 0:
+                    roots[(j - 1) * N_x +
+                          i].edges[2].nbr_edge = roots[-1].edges[0]
+                    roots[-1].edges[0].nbr_edge = roots[(j - 1) * N_x +
+                                                        i].edges[2]
+
+            # Glue the outside time edges in case we have a closed manifold.
+            if glue_space:
+                roots[j * N_x].edges[3].glued = True
+                roots[-1].edges[1].glued = True
+
+                roots[j * N_x].edges[3].nbr_edge = roots[-1].edges[1]
+                roots[-1].edges[1].nbr_edge = roots[j * N_x].edges[3]
 
         self.vertices = vertices
         self.roots = roots
@@ -328,15 +345,28 @@ class Mesh:
 
 
 class MeshParametrized(Mesh):
-    def __init__(self, gamma_space):
+    def __init__(self,
+                 gamma_space,
+                 initial_space_mesh=None,
+                 initial_time_mesh=None):
         assert isinstance(gamma_space, PiecewiseParametrization)
+        if initial_space_mesh is None:
+            initial_space_mesh = gamma_space.pw_start
+
+        assert initial_space_mesh[0] == 0
+        assert initial_space_mesh[-1] == gamma_space.pw_start[-1]
+
         super().__init__(glue_space=gamma_space.closed,
-                         initial_space_mesh=gamma_space.pw_start)
+                         initial_space_mesh=initial_space_mesh,
+                         initial_time_mesh=initial_time_mesh)
         self.gamma_space = gamma_space
-        for i in range(len(self.roots)):
-            self.roots[i].gamma_space = gamma_space.pw_gamma[i]
-            assert self.roots[i].vertices[0].x == gamma_space.pw_start[i]
-            assert self.roots[i].vertices[1].x == gamma_space.pw_start[i + 1]
+        for elem in self.roots:
+            for i in range(len(gamma_space.pw_start)):
+                if gamma_space.pw_start[i] <= elem.vertices[
+                        0].x < gamma_space.pw_start[i + 1]:
+                    elem.gamma_space = gamma_space.pw_gamma[i]
+                    break
+            assert elem.gamma_space
 
         # Ensure that the initial space consists at least of three elements.
         if self.glue_space and len(self.roots) < 3:

@@ -40,6 +40,61 @@ def test_initial_mesh():
             ]
 
 
+def test_initial_time_mesh():
+    for glue_space in [False, True]:
+        glue_space = True
+        mesh = Mesh(glue_space=glue_space,
+                    initial_space_mesh=[0., 0.3, 0.8, 1.],
+                    initial_time_mesh=[0, 0.5, 0.7, 1])
+        assert len(mesh.roots) == 9
+        assert mesh.roots[0].edges[3].on_boundary
+        assert mesh.roots[3].edges[3].on_boundary
+        assert mesh.roots[6].edges[3].on_boundary
+        assert mesh.roots[9 - 1].edges[1].on_boundary
+        assert mesh.roots[6 - 1].edges[1].on_boundary
+        assert mesh.roots[3 - 1].edges[1].on_boundary
+
+        for elem in mesh.roots[0:3]:
+            assert elem.edges[0].on_boundary
+            assert not elem.edges[2].on_boundary
+            assert not elem.edges[0].neighbour_elements()
+            assert elem.edges[2].neighbour_elements()
+
+        for elem in mesh.roots[3:6]:
+            assert not elem.edges[0].on_boundary
+            assert not elem.edges[2].on_boundary
+            assert elem.edges[0].neighbour_elements()
+            assert elem.edges[2].neighbour_elements()
+
+        for elem in mesh.roots[6:9]:
+            assert not elem.edges[0].on_boundary
+            assert elem.edges[2].on_boundary
+            assert elem.edges[0].neighbour_elements()
+            assert not elem.edges[2].neighbour_elements()
+
+        for j in range(3):
+            for i in range(2):
+                idx = j * 3 + i
+                assert mesh.roots[idx].edges[1].neighbour_elements() == [
+                    mesh.roots[idx + 1]
+                ]
+                assert mesh.roots[idx + 1].edges[3].neighbour_elements() == [
+                    mesh.roots[idx]
+                ]
+
+            if glue_space:
+                assert mesh.roots[j * 3].edges[3].glued
+                assert mesh.roots[(j + 1) * 3 - 1].edges[1].glued
+                assert mesh.roots[j * 3].edges[3].nbr_edge == mesh.roots[
+                    (j + 1) * 3 - 1].edges[1]
+                assert mesh.roots[(j + 1) * 3 -
+                                  1].edges[1].nbr_edge == mesh.roots[
+                                      j * 3].edges[3]
+                assert mesh.roots[j * 3].edges[3].neighbour_elements() == [
+                    mesh.roots[(j + 1) * 3 - 1]
+                ]
+
+
 def test_refine_time():
     for glue_space in [False, True]:
         mesh = Mesh(glue_space=glue_space)
@@ -103,15 +158,19 @@ def test_refine_space():
 
 
 def test_uniform_refine():
-    for glue_space, initial_mesh in product([True, False],
-                                            [[0., 1.], [0., 0.3, 0.8, 1.]]):
-        mesh = Mesh(glue_space=glue_space, initial_space_mesh=initial_mesh)
-        for k in range(3):
-            mesh.uniform_refine()
+    for glue_space, initial_space_mesh, initial_time_mesh in product(
+        [True, False], [[0., 1.], [0., 0.3, 0.8, 1.]],
+        [[0., 1.], [0, 0.4, 0.5, 2, 5.]]):
+        mesh = Mesh(glue_space=glue_space,
+                    initial_space_mesh=initial_space_mesh,
+                    initial_time_mesh=initial_time_mesh)
+        N_t = len(initial_time_mesh) - 1
+        N_x = len(initial_space_mesh) - 1
+        for k in range(4):
             for elem in mesh.leaf_elements:
-                assert elem.levels == (k + 1, k + 1)
-            assert len(
-                mesh.leaf_elements) == (len(initial_mesh) - 1) * 4**(k + 1)
+                assert elem.levels == (k, k)
+            assert len(mesh.leaf_elements) == N_t * 2**k * N_x * 2**k
+            mesh.uniform_refine()
 
 
 def test_local_refine():
@@ -125,9 +184,12 @@ def test_local_refine():
 
 
 def test_locally_uniform():
-    for glue_space, initial_mesh in product([True, False],
-                                            [[0., 1.], [0., 0.3, 0.8, 1.]]):
-        mesh = Mesh(glue_space=glue_space, initial_space_mesh=initial_mesh)
+    for glue_space, initial_space_mesh, initial_time_mesh in product(
+        [True, False], [[0., 1.], [0., 0.3, 0.8, 1.]],
+        [[0., 1.], [0, 0.4, 0.5, 2, 5.]]):
+        mesh = Mesh(glue_space=glue_space,
+                    initial_space_mesh=initial_space_mesh,
+                    initial_time_mesh=initial_time_mesh)
         random.seed(5)
         for _ in range(100):
             elem = random.choice(list(mesh.leaf_elements))
@@ -161,9 +223,12 @@ def test_anisotropic():
 
 
 def test_boundaries():
-    for glue_space, initial_mesh in product([True, False],
-                                            [[0., 1.], [0., 0.3, 0.8, 1.]]):
-        mesh = Mesh(glue_space=glue_space, initial_space_mesh=initial_mesh)
+    for glue_space, initial_space_mesh, initial_time_mesh in product(
+        [True, False], [[0., 1.], [0., 0.3, 0.8, 1.]],
+        [[0., 1.], [0, 0.4, 0.5, 0.79, 1.]]):
+        mesh = Mesh(glue_space=glue_space,
+                    initial_space_mesh=initial_space_mesh,
+                    initial_time_mesh=initial_time_mesh)
         random.seed(5)
         for _ in range(100):
             elem = random.choice(list(mesh.leaf_elements))

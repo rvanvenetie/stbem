@@ -13,20 +13,20 @@ def test_initial_potential_circle():
     M0 = InitialOperator(mesh, lambda y: np.ones(y.shape[1]))
 
     for t in [1, 0.5, 0.1, 0.05]:
-        val = M0.potential(t, [[0], [0]])
+        val = M0.evaluate(t, [[0], [0]])
         assert val == approx(1 / 2 * (2 - 2 * np.exp(-(1 / 4) / t)))
 
-    assert M0.potential(1, [[0.5], [0]]) == approx(0.20935725027818456022)
+    assert M0.evaluate(1, [[0.5], [0]]) == approx(0.20935725027818456022)
 
     M0 = InitialOperator(mesh, lambda y: y[0]**2 + y[1]**2)
     for t in [1, 0.5, 0.1]:
-        val = M0.potential(t, [[0], [0]])
+        val = M0.evaluate(t, [[0], [0]])
         assert val == approx(
             np.exp(-(1 / 4) / t) * (-1 - 4 * t + 4 * np.exp((1 / 4) / t) * t))
 
     M0 = InitialOperator(mesh, lambda y: np.sin(y[0]**2) * np.cos(y[1]**2))
     for t in [1, 0.5, 0.1]:
-        val = M0.potential(t, [[0], [0]])
+        val = M0.evaluate(t, [[0], [0]])
         assert val == approx(
             -(-4 * np.exp(1 / 4 / t) * t + 4 * t * np.cos(1) + np.sin(1)) /
             (np.exp(1 / 4 / t) * (2 * (1 + 16 * t**2))))
@@ -37,12 +37,12 @@ def test_initial_potential_unit_square():
     M0 = InitialOperator(mesh, lambda y: np.ones(y.shape[1]))
 
     for t in [1, 0.5, 0.1, 0.05]:
-        val = M0.potential(t, [[0], [0]])
+        val = M0.evaluate(t, [[0], [0]])
         assert val == approx(1 / 4 * erf(1 / (2 * np.sqrt(t)))**2)
 
     M0 = InitialOperator(mesh, lambda y: y[0] - y[1] / 4)
     for t in [1, 0.5, 0.1, 0.05]:
-        val = M0.potential(t, [[0], [0]])
+        val = M0.evaluate(t, [[0], [0]])
     assert val == approx(
         (3 * (-1 + np.exp(1 / 4 / t)) * np.sqrt(t) * erf(1 /
                                                          (2 * np.sqrt(t)))) /
@@ -151,14 +151,53 @@ def test_initial_potential_evaluate():
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=lambda y: np.sin(y[0]) * y[1],
                          quad_eval=55)
+    # Choice X in the interior.
     x = np.array([[0.5], [0.5]])
-    assert M0.potential(1, np.array([[0.5], [0.5]])) == approx(
-        0.0175628125343357995877740924697, abs=0, rel=1e-15)
-    assert M0.potential(0.5, np.array([[0.5], [0.5]])) == approx(
-        0.0337504573274485763918544294309, abs=0, rel=1e-15)
-    assert M0.potential(0.1, np.array([[0.5], [0.5]])) == approx(
-        0.1254904823141527244648782241110, abs=0, rel=1e-12)
-    assert M0.potential(0.01, np.array([[0.5], [0.5]])) == approx(
-        0.237147179846976417036758053345, abs=0, rel=1e-12)
-    assert M0.potential(0.001, np.array([[0.5], [0.5]])) == approx(
-        0.239473176349241907505021205474, abs=0, rel=1e-4)
+    assert M0.evaluate(1, x) == approx(0.0175628125343357995877740924697,
+                                       abs=0,
+                                       rel=1e-15)
+    assert M0.evaluate(0.5, x) == approx(0.0337504573274485763918544294309,
+                                         abs=0,
+                                         rel=1e-15)
+    assert M0.evaluate(0.1, x) == approx(0.1254904823141527244648782241110,
+                                         abs=0,
+                                         rel=1e-12)
+    assert M0.evaluate(0.01, x) == approx(0.237147179846976417036758053345,
+                                          abs=0,
+                                          rel=1e-12)
+    # TODO: INSTABLE.
+    assert M0.evaluate(0.001, x) == approx(0.239473176349241907505021205474,
+                                           abs=0,
+                                           rel=1e-4)
+
+    # Choice X on the boundary.
+    x = np.array([[0.5], [0]])
+    assert M0.evaluate(1, x) == approx(0.0158639139909734737898716357674,
+                                       abs=0,
+                                       rel=1e-15)
+    assert M0.evaluate(0.5, x) == approx(0.0276704987660549098138357290730,
+                                         abs=0,
+                                         rel=1e-15)
+    assert M0.evaluate(0.1, x) == approx(0.0558118617425246607110298404885,
+                                         abs=0,
+                                         rel=1e-15)
+    assert M0.evaluate(0.01, x) == approx(0.0267700878683716800648993551890,
+                                          abs=0,
+                                          rel=1e-15)
+    assert M0.evaluate(0.001, x) == approx(0.00854499738192775818970279763857,
+                                           abs=0,
+                                           rel=1e-5)
+
+    x = np.array([[1], [1]])
+    assert M0.evaluate(0.5, x) == approx(0.0311242955274897776912896738701,
+                                         abs=0,
+                                         rel=1e-15)
+    assert M0.evaluate(0.1, x) == approx(0.0946123480667496304577916434116,
+                                         abs=0,
+                                         rel=1e-15)
+    assert M0.evaluate(0.01, x) == approx(0.171341260445764059011160158183,
+                                          abs=0,
+                                          rel=1e-15)
+    assert M0.evaluate(0.001, x) == approx(0.198013791933202148280141026357,
+                                           abs=0,
+                                           rel=1e-8)

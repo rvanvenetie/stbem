@@ -128,7 +128,7 @@ class InitialOperator:
             ips.append((elem, val))
 
         assert id_bdr == 1
-        assert touch_bdr >= 1
+        #assert touch_bdr >= 1
         return math.fsum([val for elem, val in ips]), ips
 
     def linform_vector(self):
