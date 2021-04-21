@@ -31,19 +31,14 @@ def u_neumann(t, x_hat):
 dofs = []
 errs_l2 = []
 errs_estim = []
-h = 2
-for k in range(10):
-    h = h / 2
-    h_x = h
-    h_t = h**(6 / 5)
-    N_x = round(1 / h_x)
+h_x = 2
+for k in range(5):
+    h_x = h_x / 2
+    h_t = h_x**(6 / 5)
+    N_x = 4 * round(1 / h_x)
     N_t = round(1 / h_t)
-    mesh_space = []
-    for j in range(4 * N_x + 1):
-        mesh_space.append(Fraction(j, N_x))
-    mesh_time = []
-    for j in range(N_t + 1):
-        mesh_time.append(Fraction(j, N_t))
+    mesh_space = [Fraction(4 * j, N_x) for j in range(N_x + 1)]
+    mesh_time = [Fraction(j, N_t) for j in range(N_t + 1)]
 
     mesh = MeshParametrized(UnitSquare(),
                             initial_space_mesh=mesh_space,
@@ -59,8 +54,7 @@ for k in range(10):
     SL = SingleLayerOperator(mesh)
     dofs.append(N)
 
-    cache_SL_fn = "{}/SL_graded_fast_dofs_{}_{}.npy".format(
-        'data', N, mesh.md5())
+    cache_SL_fn = "{}/SL_dofs_{}_{}.npy".format('data', N, mesh.md5())
     try:
         mat = np.load(cache_SL_fn)
         print("Loaded Single Layer from file {}".format(cache_SL_fn))
@@ -68,17 +62,18 @@ for k in range(10):
         calc_dict = {}
         time_mat_begin = time.time()
         mat = np.zeros((N, N))
-        for i, elem_test in enumerate(elems_cur):
-            for j, elem_trial in enumerate(elems_cur):
+        for j, elem_trial in enumerate(elems_cur[:N_x]):
+            assert elem_trial.vertices[0].t == 0
+            for i, elem_test in enumerate(elems_cur):
                 if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
                     continue
-                a, b = elem_test.vertices[0].t, elem_trial.vertices[0].t
-                c, d = elem_test.vertices[0].x, elem_trial.vertices[0].x
-                tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
-                if not tup in calc_dict:
-                    calc_dict[tup] = SL.bilform(elem_trial, elem_test)
+                mat[i, j] = SL.bilform(elem_trial, elem_test)
 
-                mat[i, j] = calc_dict[tup]
+        for j, elem_trial in enumerate(elems_cur[N_x:]):
+            assert elem_trial.vertices[0].t > 0
+            start = N_x + j // N_x * N_x
+            mat[start:, j + N_x] = (mat[:, j % N_x])[:-start]
+
         try:
             np.save(cache_SL_fn, mat)
             print("Stored Single Layer to {}".format(cache_SL_fn))
@@ -89,20 +84,20 @@ for k in range(10):
 
     # Calculate initial potential.
     time_rhs_begin = time.time()
-    cache_M0_fn = "{}/M0_graded_fast_dofs_{}_{}.npy".format(
-        'data', N, mesh.md5())
+    cache_M0_fn = "{}/M0_dofs_{}_{}.npy".format('data', N, mesh.md5())
     try:
         M0_u0 = np.load(cache_M0_fn)
         print("Loaded Initial Operator from file {}".format(cache_M0_fn))
     except:
-        calc_dict = {}
         M0_u0 = np.zeros(shape=N)
         for j, elem_test in enumerate(elems_cur):
-            a = elem_test.vertices[0].x - math.floor(elem_test.vertices[0].x)
-            tup = (elem_test.vertices[0].t, a)
-            if not tup in calc_dict:
-                calc_dict[tup] = M0.linform(elem_test)
-            M0_u0[j], _ = calc_dict[tup]
+            M0_u0_t[j], _ = M0.linform(elem_test)
+            if elem_test.vertices[0].x >= 1: continue
+            M0_u0[j], _ = M0.linform(elem_test)
+        for j, elem_test in enumerate(elems_cur):
+            if elem_test.vertices[0].x < 1: continue
+            M0_u0[j] = M0_u0[j // N_x * N_x + j % (N_x // 4)]
+
         np.save(cache_M0_fn, M0_u0)
         print('Calculating initial potential took {}s'.format(time.time() -
                                                               time_rhs_begin))

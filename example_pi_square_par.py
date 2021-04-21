@@ -7,50 +7,46 @@ import matplotlib.pyplot as plt
 import math
 from mesh import Mesh, MeshParametrized
 from initial_potential import InitialOperator
-from initial_mesh import UnitSquareBoundaryRefined
+from initial_mesh import PiSquareBoundaryRefined
 import initial_mesh
 from single_layer import SingleLayerOperator
 import time
-from parametrization import Circle, UnitSquare, LShape
+from parametrization import Circle, PiSquare, LShape
 from quadrature import gauss_quadrature_scheme, ProductScheme2D
 import quadpy
 
 
 def u(t, xy):
-    return np.exp(-2 * np.pi**2 * t) * np.sin(np.pi * xy[0]) * np.sin(
-        np.pi * xy[1])
+    return np.exp(-2 * t) * np.sin(xy[0]) * np.sin(xy[1])
 
 
 def u0(xy):
-    return np.sin(np.pi * xy[0]) * np.sin(np.pi * xy[1])
-
-
-def u_neumann(t, x_hat):
-    """ evaluates the neumann trace along the lateral boundary. """
-    return -np.pi * np.exp(-2 * np.pi**2 * t) * np.sin(np.pi * (x_hat % 1))
+    return np.sin(xy[0]) * np.sin(xy[1])
 
 
 def M0u0(t, xy):
     x = xy[0]
     y = xy[1]
-    pit = np.pi * t
-    sqrtt = np.sqrt(t)
-    return (((-(1 / 16)) * (erf((x - 2 * 1j * pit) / (2 * sqrtt)) + erf(
-        (1 - x + 2 * 1j * pit) /
-        (2 * sqrtt)) - np.exp(2 * 1j * x * np.pi) * (erf(
-            (1 - x - 2 * 1j * pit) / (2 * sqrtt)) + erf(
-                (x + 2 * 1j * pit) / (2 * sqrtt)))) * (erf(
-                    (y - 2 * 1j * pit) / (2 * sqrtt)) + erf(
-                        (1 - y + 2 * 1j * pit) /
-                        (2 * sqrtt)) - np.exp(2 * 1j * y * np.pi) * (erf(
-                            (1 - y - 2 * 1j * pit) / (2 * sqrtt)) + erf(
-                                (y + 2 * 1j * pit) / (2 * sqrtt))))) /
-            np.exp(1j * np.pi * (x + y - 2 * 1j * pit))).real
+    return ((-(1 / 16)) * np.exp((-1j) * (x + y) - 2 * t) * (-1 + erf(
+        (x - 2 * 1j * t) / (2 * np.sqrt(t))) + np.exp(2 * 1j * x) * (-erf(
+            (x + 2 * 1j * t) / (2 * np.sqrt(t))) + erf(
+                (x - np.pi + 2 * 1j * t) / (2 * np.sqrt(t)))) + erfc(
+                    (x - np.pi - 2 * 1j * t) / (2 * np.sqrt(t)))) *
+            (-1 + erf(
+                (y - 2 * 1j * t) / (2 * np.sqrt(t))) + np.exp(2 * 1j * y) *
+             (-erf((y + 2 * 1j * t) / (2 * np.sqrt(t))) + erf(
+                 (y - np.pi + 2 * 1j * t) / (2 * np.sqrt(t)))) + erfc(
+                     (y - np.pi - 2 * 1j * t) / (2 * np.sqrt(t))))).real
+
+
+def u_neumann(t, x_hat):
+    """ evaluates the neumann trace along the lateral boundary. """
+    return -np.exp(-2 * t) * np.sin((x_hat % np.pi))
 
 
 def error_estim_l2(i):
     elem = elems_cur[i]
-    if elem.vertices[0].x >= 1: return 0
+    if elem.vertices[0].x >= np.pi: return 0
 
     # Evaluate the residual squared.
     def residual_squared(tx):
@@ -85,7 +81,7 @@ def SL_mat_col(j):
 
 def IP_rhs(j):
     elem_test = elems_cur[j]
-    if elem_test.vertices[0].x >= 1: return 0
+    if elem_test.vertices[0].x >= np.pi: return 0
     else: return M0.linform(elem_test)[0]
 
 
@@ -99,20 +95,19 @@ if __name__ == '__main__':
     h_x = 2
     for k in range(10):
         h_x = h_x / 2
-        h_t = h_x**(6 / 5)
+        h_t = h_x  #**(6 / 5)
         N_x = 4 * round(1 / h_x)
         N_t = round(1 / h_t)
-        mesh_space = [Fraction(4 * j, N_x) for j in range(N_x + 1)]
+        mesh_space = [np.pi * Fraction(4 * j, N_x) for j in range(N_x + 1)]
         mesh_time = [Fraction(j, N_t) for j in range(N_t + 1)]
-        print(mesh_space)
 
-        mesh = MeshParametrized(UnitSquare(),
+        mesh = MeshParametrized(PiSquare(),
                                 initial_space_mesh=mesh_space,
                                 initial_time_mesh=mesh_time)
         print(mesh.gmsh(), file=open("./data/{}.gmsh".format(mesh.md5()), "w"))
         M0 = InitialOperator(bdr_mesh=mesh,
                              u0=u0,
-                             initial_mesh=UnitSquareBoundaryRefined)
+                             initial_mesh=PiSquareBoundaryRefined)
 
         elems_cur = list(mesh.leaf_elements)
         N = len(elems_cur)
@@ -120,8 +115,7 @@ if __name__ == '__main__':
         SL = SingleLayerOperator(mesh)
         dofs.append(N)
 
-        cache_SL_fn = "{}/SL_graded_parfor_dofs_{}_{}.npy".format(
-            'data', N, mesh.md5())
+        cache_SL_fn = "{}/SL_PI_dofs_{}_{}.npy".format('data', N, mesh.md5())
         try:
             mat = np.load(cache_SL_fn)
             print("Loaded Single Layer from file {}".format(cache_SL_fn))
@@ -146,15 +140,14 @@ if __name__ == '__main__':
 
         # Calculate initial potential.
         time_rhs_begin = time.time()
-        cache_M0_fn = "{}/M0_graded_parfor_dofs_{}_{}.npy".format(
-            'data', N, mesh.md5())
+        cache_M0_fn = "{}/M0_PI_dofs_{}_{}.npy".format('data', N, mesh.md5())
         try:
             M0_u0 = np.load(cache_M0_fn)
             print("Loaded Initial Operator from file {}".format(cache_M0_fn))
         except:
             M0_u0 = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
             for j, elem_test in enumerate(elems_cur):
-                if elem_test.vertices[0].x < 1: continue
+                if elem_test.vertices[0].x < np.pi: continue
                 M0_u0[j] = M0_u0[j // N_x * N_x + j % (N_x // 4)]
             np.save(cache_M0_fn, M0_u0)
             print('Calculating initial potential took {}s'.format(
@@ -187,7 +180,7 @@ if __name__ == '__main__':
         err_estim_sqr = np.array(
             mp.Pool(N_procs).map(error_estim_l2, range(N)))
         for j, elem in enumerate(elems_cur):
-            if elem.vertices[0].x < 1: continue
+            if elem.vertices[0].x < np.pi: continue
             err_estim_sqr[j] = err_estim_sqr[j // N_x * N_x + j % (N_x // 4)]
 
         errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))

@@ -61,7 +61,7 @@ for k in range(10):
     #mat = SL.bilform_matrix(cache_dir='data')
     #print('Calculating matrix took {}s'.format(time.time() - time_mat_begin))
 
-    cache_SL_fn = "{}/SL_PI_fast_dofs_{}_{}.npy".format('data', N, mesh.md5())
+    cache_SL_fn = "{}/SL_PI_dofs_{}_{}.npy".format('data', N, mesh.md5())
     try:
         mat = np.load(cache_SL_fn)
         print("Loaded Single Layer from file {}".format(cache_SL_fn))
@@ -90,7 +90,7 @@ for k in range(10):
 
     # Calculate initial potential.
     time_rhs_begin = time.time()
-    cache_M0_fn = "{}/M0_pi_fast_dofs_{}_{}.npy".format('data', N, mesh.md5())
+    cache_M0_fn = "{}/M0_pi_dofs_{}_{}.npy".format('data', N, mesh.md5())
     try:
         M0_u0 = np.load(cache_M0_fn)
         print("Loaded Initial Operator from file {}".format(cache_M0_fn))
