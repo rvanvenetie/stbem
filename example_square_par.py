@@ -97,6 +97,7 @@ def SL_mat_row(i):
 
 
 def IP_rhs(j):
+    elem_test = elems_cur[k]
     a = elem_test.vertices[0].x % 1
     tup = (elem_test.vertices[0].t, a)
 
