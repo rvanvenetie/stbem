@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.special import erf, erfc
 from pytest import approx
 import matplotlib.pyplot as plt
 import math
@@ -25,6 +26,24 @@ def u0(xy):
 def u_neumann(t, x_hat):
     """ evaluates the neumann trace along the lateral boundary. """
     return -np.pi * np.exp(-2 * np.pi**2 * t) * np.sin(np.pi * (x_hat % 1))
+
+
+def M0u0(t, xy):
+    x = xy[0]
+    y = xy[1]
+    pit = np.pi * t
+    sqrtt = np.sqrt(t)
+    return (((-(1 / 16)) * (erf((x - 2 * 1j * pit) / (2 * sqrtt)) + erf(
+        (1 - x + 2 * 1j * pit) /
+        (2 * sqrtt)) - np.exp(2 * 1j * x * np.pi) * (erf(
+            (1 - x - 2 * 1j * pit) / (2 * sqrtt)) + erf(
+                (x + 2 * 1j * pit) / (2 * sqrtt)))) * (erf(
+                    (y - 2 * 1j * pit) / (2 * sqrtt)) + erf(
+                        (1 - y + 2 * 1j * pit) /
+                        (2 * sqrtt)) - np.exp(2 * 1j * y * np.pi) * (erf(
+                            (1 - y - 2 * 1j * pit) / (2 * sqrtt)) + erf(
+                                (y + 2 * 1j * pit) / (2 * sqrtt))))) /
+            np.exp(1j * np.pi * (x + y - 2 * 1j * pit))).real
 
 
 mesh = MeshParametrized(UnitSquare())
@@ -180,7 +199,8 @@ for k in range(10):
                     VPhi += Phi_cur[j] * SL.evaluate(elem_trial, t, x_hat, x)
 
                 # Compare with rhs.
-                result[i] = VPhi + M0.evaluate(t, x)
+                #result[i] = VPhi + M0.evaluate_mesh(t, x, initial_mesh)
+                result[i] = VPhi + M0u0(t, x)
             return result**2
 
         # Create initial mesh

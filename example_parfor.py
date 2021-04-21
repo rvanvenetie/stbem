@@ -1,5 +1,6 @@
 import numpy as np
-from multiprocessing import Pool
+import multiprocessing
+from scipy.special import erf, erfc
 from fractions import Fraction
 from pytest import approx
 import matplotlib.pyplot as plt
@@ -29,30 +30,56 @@ def u_neumann(t, x_hat):
     return -np.pi * np.exp(-2 * np.pi**2 * t) * np.sin(np.pi * (x_hat % 1))
 
 
-# Evaluate the residual squared.
-def residual_squared(tx):
-    result = np.zeros(tx.shape[1])
-    for i, (t, x_hat) in enumerate(zip(tx[0], tx[1])):
-        #x = elem.gamma_space(x_hat)
-        x = mesh.gamma_space.eval(x_hat)
-        # Evaluate the SL for our trial function.
-        VPhi = 0
-        for j, elem_trial in enumerate(elems_cur):
-            VPhi += Phi_cur[j] * SL.evaluate(elem_trial, t, x_hat, x)
+def M0u0(t, xy):
+    x = xy[0]
+    y = xy[1]
+    pit = np.pi * t
+    sqrtt = np.sqrt(t)
+    return (((-(1 / 16)) * (erf((x - 2 * 1j * pit) / (2 * sqrtt)) + erf(
+        (1 - x + 2 * 1j * pit) /
+        (2 * sqrtt)) - np.exp(2 * 1j * x * np.pi) * (erf(
+            (1 - x - 2 * 1j * pit) / (2 * sqrtt)) + erf(
+                (x + 2 * 1j * pit) / (2 * sqrtt)))) * (erf(
+                    (y - 2 * 1j * pit) / (2 * sqrtt)) + erf(
+                        (1 - y + 2 * 1j * pit) /
+                        (2 * sqrtt)) - np.exp(2 * 1j * y * np.pi) * (erf(
+                            (1 - y - 2 * 1j * pit) / (2 * sqrtt)) + erf(
+                                (y + 2 * 1j * pit) / (2 * sqrtt))))) /
+            np.exp(1j * np.pi * (x + y - 2 * 1j * pit))).real
 
-        # Compare with rhs.
-        result[i] = VPhi + M0.evaluate(t, x)
-    return result**2
 
-
-def fun(i):
-    global elems_cur
+def error_estim_l2(i):
     elem = elems_cur[i]
-    return (elem.h_x**(-1) + elem.h_t**(-0.5)) * gauss_2d.integrate(
+
+    t = elem.vertices[0].t
+    x = elem.vertices[0].x % 1
+    if (t, x) in calc_dict:
+        return calc_dict[t, x]
+
+    # Evaluate the residual squared.
+    def residual_squared(tx):
+        result = np.zeros(tx.shape[1])
+        for i, (t, x_hat) in enumerate(zip(tx[0], tx[1])):
+            x = elem.gamma_space(x_hat)
+            #x = mesh.gamma_space.eval(x_hat)
+            # Evaluate the SL for our trial function.
+            VPhi = 0
+            for j, elem_trial in enumerate(elems_cur):
+                VPhi += Phi_cur[j] * SL.evaluate(elem_trial, t, x_hat, x)
+
+            # Compare with rhs.
+            #result[i] = VPhi + M0.evaluate_mesh(t, x, initial_mesh)
+            result[i] = VPhi + M0u0(t, x)
+        return result**2
+
+    result = (elem.h_x**(-1) + elem.h_t**(-0.5)) * gauss_2d.integrate(
         residual_squared, *elem.time_interval, *elem.space_interval)
+    calc_dict[t, x] = result
+    return result
 
 
 if __name__ == '__main__':
+    multiprocessing.set_start_method('fork')
     dofs = []
     errs_l2 = []
     errs_estim = []
@@ -78,7 +105,6 @@ if __name__ == '__main__':
                              u0=u0,
                              initial_mesh=UnitSquareBoundaryRefined)
 
-        global elems_cur
         elems_cur = list(mesh.leaf_elements)
         N = len(elems_cur)
         print('Loop with {} dofs for N_x = {} N_t = {}'.format(N, N_x, N_t))
@@ -155,18 +181,15 @@ if __name__ == '__main__':
         errs_l2.append(err_l2)
         print('Error estimation of \Phi - \partial_n took {}s'.format(
             time.time() - time_l2_begin))
-        # Calculate the weighted l2 error of the residual.
+        # Calculate the weighted l2 error of the residual, set global vars.
         err_estim_sqr = np.zeros(N)
         err_order = 3
         gauss_2d = ProductScheme2D(gauss_quadrature_scheme(err_order))
-        #quad_scheme = quadpy.get_good_scheme(3)
-        calc_dict = {}
 
-        #err_estim_sqr = np.array(list(map(fun, enumerate(elems_cur))))
-        #err_estim_sqr = np.array(
-        #    list(pmap(fun, enumerate(elems_cur), length=len(elems_cur))))
-        print(Pool(5).map(fun, range(len(elems_cur))))
-
+        manager = multiprocessing.Manager()
+        calc_dict = manager.dict()
+        err_estim_sqr = np.array(
+            multiprocessing.Pool(2).map(error_estim_l2, range(N)))
         errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
         print('Error estimation of weighted residual of order {} took {}s'.
               format(err_order,
