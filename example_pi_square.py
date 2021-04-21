@@ -57,14 +57,13 @@ for k in range(10):
             for j, elem_trial in enumerate(elems_cur):
                 if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
                     continue
-                #a, _, b, _ = *elem_test.time_interval, *elem_trial.time_interval
-                #c, _, d, _ = *elem_test.space_interval, *elem_trial.space_interval
-                #tup = (a - b, c - math.floor(c), (d - math.floor(c)) % 4)
-                ##if not tup in calc_dict:
-                #if True:
-                #    calc_dict[tup] = SL.bilform(elem_trial, elem_test)
+                a, _, b, _ = *elem_test.time_interval, *elem_trial.time_interval
+                c, _, d, _ = *elem_test.space_interval, *elem_trial.space_interval
+                tup = (a - b, c, d)
+                if not tup in calc_dict:
+                    calc_dict[tup] = SL.bilform(elem_trial, elem_test)
 
-                mat[i, j] = SL.bilform(elem_trial, elem_test)
+                mat[i, j] = calc_dict[tup]
         try:
             np.save(cache_SL_fn, mat)
             print("Stored Single Layer to {}".format(cache_SL_fn))
@@ -153,18 +152,14 @@ for k in range(10):
         #initial_mesh = UnitSquareBoundaryRefined(elem.gamma_space(c),
         #                                         elem.gamma_space(d))
 
-        #t = elem.time_interval[0]
-        #x = elem.space_interval[0] - math.floor(elem.space_interval[0])
-        ##if not (t, x) in calc_dict:
-        #if True:
-        #    calc_dict[t, x] = (elem.h_x**(-2 * mu) +
-        #                       elem.h_t**(-2 * nu)) * gauss_2d.integrate(
-        #                           residual_squared, *elem.time_interval, *
-        #                           elem.space_interval)
-
-        err_estim_sqr[i] = (
-            elem.h_x**(-2 * mu) + elem.h_t**(-2 * nu)) * gauss_2d.integrate(
-                residual_squared, *elem.time_interval, *elem.space_interval)
+        t = elem.time_interval[0]
+        x = elem.space_interval[0] % np.pi
+        if not (t, x) in calc_dict:
+            calc_dict[t, x] = (elem.h_x**(-2 * mu) +
+                               elem.h_t**(-2 * nu)) * gauss_2d.integrate(
+                                   residual_squared, *elem.time_interval, *
+                                   elem.space_interval)
+        err_estim_sqr[i] = calc_dict[t, x]
 
     errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
     print('Error estimation of weighted residual of order {} took {}s'.format(
