@@ -157,13 +157,13 @@ for k in range(10):
         #x = elem.space_interval[0] - math.floor(elem.space_interval[0])
         ##if not (t, x) in calc_dict:
         #if True:
-        #    calc_dict[t, x] = (elem.h_t**(-2 * mu) +
-        #                       elem.h_x**(-2 * nu)) * gauss_2d.integrate(
+        #    calc_dict[t, x] = (elem.h_x**(-2 * mu) +
+        #                       elem.h_t**(-2 * nu)) * gauss_2d.integrate(
         #                           residual_squared, *elem.time_interval, *
         #                           elem.space_interval)
 
         err_estim_sqr[i] = (
-            elem.h_t**(-2 * mu) + elem.h_x**(-2 * nu)) * gauss_2d.integrate(
+            elem.h_x**(-2 * mu) + elem.h_t**(-2 * nu)) * gauss_2d.integrate(
                 residual_squared, *elem.time_interval, *elem.space_interval)
 
     errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))

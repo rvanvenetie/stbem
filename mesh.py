@@ -130,7 +130,7 @@ class Element:
         self.space_interval = float(self.vertices[0].x), float(
             self.vertices[1].x)
         self.h_t = float(self.vertices[2].t - self.vertices[0].t)
-        self.h_x = float(self.vertices[1].x - self.vertices[0].x)
+        self.h_x = float(self.vertices[2].x - self.vertices[0].x)
 
     def dist(self, other):
         """ Calculates the distance in the embedded space. """
