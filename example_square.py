@@ -77,7 +77,6 @@ Phi_prev = None
 for k in range(7):
     elems_cur = list(mesh.leaf_elements)
     elems_cur.sort(key=lambda elem: elem.vertices[0].tx)
-    print(elems_cur)
     N = len(elems_cur)
     print('Loop with {} dofs'.format(N))
     SL = SingleLayerOperator(mesh)
@@ -290,7 +289,7 @@ for k in range(7):
             rates_hierch = np.log(
                 np.array(errs_hierch[1:]) /
                 np.array(errs_hierch[:-1])) / np.log(
-                    np.array(dofs[2:]) / np.array(dofs[:-2]))
+                    np.array(dofs[1:-1]) / np.array(dofs[:-2]))
     else:
         rates_estim = []
         rates_l2 = []

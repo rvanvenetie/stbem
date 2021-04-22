@@ -244,7 +244,7 @@ if __name__ == '__main__':
                 rates_hierch = np.log(
                     np.array(errs_hierch[1:]) /
                     np.array(errs_hierch[:-1])) / np.log(
-                        np.array(dofs[2:]) / np.array(dofs[:-2]))
+                        np.array(dofs[1:-1]) / np.array(dofs[:-2]))
         else:
             rates_estim = []
             rates_l2 = []
