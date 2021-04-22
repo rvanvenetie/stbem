@@ -69,7 +69,7 @@ class SingleLayerOperator:
     def __init__(self, mesh, quad_order=12):
         self.gauss_scheme = gauss_quadrature_scheme(23)
         self.log_scheme = log_quadrature_scheme(quad_order, quad_order)
-        self.log_near_scheme = log_quadrature_scheme(3, 3)
+        self.log_scheme_m = self.log_scheme.mirror()
         self.log_log = ProductScheme2D(self.log_scheme, self.log_scheme)
         self.duff_log_log = DuffyScheme2D(self.log_log, symmetric=False)
         self.mesh = mesh
@@ -198,10 +198,9 @@ class SingleLayerOperator:
     def evaluate(self, elem_trial, t, x_hat, x=None):
         """ Evaluates (V 1_trial)(t, gamma(x_hat)) for t, x_hat in the param domain. """
         if t <= elem_trial.time_interval[0]: return 0
-
-        # Calculate the time integrated kernel.
         if x is None: x = self.mesh.gamma_space.eval(x_hat)
 
+        # Calculate the time integrated kernel.
         def G_time_parametrized(y_hat):
             xy = (x - elem_trial.gamma_space(y_hat))**2
             xy = xy[0] + xy[1]
@@ -217,23 +216,22 @@ class SingleLayerOperator:
         a, b = elem_trial.space_interval
         if a <= x_hat <= b:
             assert np.all(elem_trial.gamma_space(x_hat) == x)
-            return self.log_scheme.mirror().integrate(
+            return self.log_scheme_m.integrate(
                 G_time_parametrized, a, x_hat) + self.log_scheme.integrate(
                     G_time_parametrized, x_hat, b)
 
         # Calculate distance of x_hat to both endpoints.
-        if not self.mesh.glue_space:
-            d_a = abs(x_hat - a)
-            d_b = abs(x_hat - b)
-        else:
+        if self.mesh.glue_space:
             d_a = min(abs(x_hat - a), abs(self.gamma_len - x_hat + a))
             d_b = min(abs(x_hat - b), abs(self.gamma_len - b + x_hat))
+        else:
+            d_a = abs(x_hat - a)
+            d_b = abs(x_hat - b)
 
         if d_a <= d_b:
             return self.log_scheme.integrate(G_time_parametrized, a, b)
         else:
-            return self.log_scheme.mirror().integrate(G_time_parametrized, a,
-                                                      b)
+            return self.log_scheme_m.integrate(G_time_parametrized, a, b)
 
     def evaluate_vector(self, t, x_hat):
         """ Returns the vector (V 1_elem)(t, gamma(x_hat)) for all elements in mesh. """

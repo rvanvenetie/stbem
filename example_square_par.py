@@ -16,6 +16,21 @@ from quadrature import gauss_quadrature_scheme, ProductScheme2D
 import quadpy
 
 
+def prolongate(vec_coarse, elems_coarse, elems_fine):
+    elem_coarse_2_idx = {k: v for v, k in enumerate(elems_coarse)}
+    vec_fine = np.zeros(len(elems_fine))
+
+    for j, elem_fine in enumerate(elems_fine):
+        elem_coarse = elem_fine
+        while elem_coarse not in elem_coarse_2_idx:
+            assert elem_coarse.parent
+            elem_coarse = elem_coarse.parent
+        assert elem_coarse in elem_coarse_2_idx
+        i = elem_coarse_2_idx[elem_coarse]
+        vec_fine[j] = vec_coarse[i]
+    return vec_fine
+
+
 def u(t, xy):
     return np.exp(-2 * np.pi**2 * t) * np.sin(np.pi * xy[0]) * np.sin(
         np.pi * xy[1])
@@ -89,6 +104,8 @@ def IP_rhs(j):
     else: return M0.linform(elem_test)[0]
 
 
+elems_prev = None
+Phi_prev = None
 if __name__ == '__main__':
     N_procs = mp.cpu_count()
     mp.set_start_method('fork')
@@ -96,18 +113,19 @@ if __name__ == '__main__':
     dofs = []
     errs_l2 = []
     errs_estim = []
+    errs_hierch = []
     h_x = 2
+    mesh = MeshParametrized(UnitSquare())
     for k in range(10):
-        h_x = h_x / 2
-        h_t = h_x  #**(6 / 5)
-        N_x = 4 * round(1 / h_x)
-        N_t = round(1 / h_t)
-        mesh_space = [Fraction(4 * j, N_x) for j in range(N_x + 1)]
-        mesh_time = [Fraction(j, N_t) for j in range(N_t + 1)]
+        N_x = 4 * 2**k
+        N_t = 2**k
+        #h_x = h_x / 2
+        #h_t = h_x  #**(6 / 5)
+        #N_x = 4 * round(1 / h_x)
+        #N_t = round(1 / h_t)
+        #mesh_space = [Fraction(4 * j, N_x) for j in range(N_x + 1)]
+        #mesh_time = [Fraction(j, N_t) for j in range(N_t + 1)]
 
-        mesh = MeshParametrized(UnitSquare(),
-                                initial_space_mesh=mesh_space,
-                                initial_time_mesh=mesh_time)
         print(mesh.gmsh(), file=open("./data/{}.gmsh".format(mesh.md5()), "w"))
         M0 = InitialOperator(bdr_mesh=mesh,
                              u0=u0,
@@ -158,6 +176,28 @@ if __name__ == '__main__':
                 time.time() - time_rhs_begin))
             print("Stored Initial Operator to {}".format(cache_M0_fn))
 
+        # Calculate the hierarchical basis estimator.
+        if k:
+            assert elems_prev
+            time_hierach_begin = time.time()
+            elem_2_idx_fine = {k: v for v, k in enumerate(elems_cur)}
+            Phi_prev_prolong = prolongate(Phi_prev, elems_prev, elems_cur)
+            VPhi_prev = mat @ Phi_prev_prolong
+            estim = np.zeros(len(elems_prev))
+            for i, elem_coarse in enumerate(elems_prev):
+                elems_fine = []
+                for child in elem_coarse.children:
+                    elems_fine += child.children
+                assert len(elems_fine) == 4
+
+                for elem in elems_fine:
+                    j = elem_2_idx_fine[elem]
+                    estim[i] += abs(-M0_u0[j] - VPhi_prev[j])**2 / mat[j, j]
+
+            errs_hierch.append(np.sqrt(np.sum(estim)))
+            print('Error estimation of hierarhical estimator took {}s'.format(
+                time.time() - time_hierach_begin))
+
         # Solve.
         time_solve_begin = time.time()
         Phi_cur = np.linalg.solve(mat, -M0_u0)
@@ -199,10 +239,21 @@ if __name__ == '__main__':
             rates_l2 = np.log(
                 np.array(errs_l2[1:]) / np.array(errs_l2[:-1])) / np.log(
                     np.array(dofs[1:]) / np.array(dofs[:-1]))
+            if k > 1:
+                rates_hierch = np.log(
+                    np.array(errs_hierch[1:]) /
+                    np.array(errs_hierch[:-1])) / np.log(
+                        np.array(dofs[2:]) / np.array(dofs[:-2]))
         else:
             rates_estim = []
             rates_l2 = []
+            rates_hierch = []
 
         print(
-            '\ndofs={}\nerrs_l2={}\nerr_estim={}\n\nrates_l2={}\nrates_estim={}\n------'
-            .format(dofs, errs_l2, errs_estim, rates_l2, rates_estim))
+            '\ndofs={}\nerrs_l2={}\nerr_estim={}\nerr_hierch={}\n\nrates_l2={}\nrates_estim={}\nrates_hierch={}\n------'
+            .format(dofs, errs_l2, errs_estim, errs_hierch, rates_l2,
+                    rates_estim, rates_hierch))
+
+        mesh.uniform_refine()
+        Phi_prev = Phi_cur
+        elems_prev = elems_cur
