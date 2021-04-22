@@ -132,6 +132,7 @@ if __name__ == '__main__':
                              initial_mesh=UnitSquareBoundaryRefined)
 
         elems_cur = list(mesh.leaf_elements)
+        elems_cur.sort(key=lambda elem: elem.vertices[0].tx)
         N = len(elems_cur)
         print('Loop with {} dofs for N_x = {} N_t = {}'.format(N, N_x, N_t))
         SL = SingleLayerOperator(mesh)

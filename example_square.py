@@ -10,8 +10,23 @@ import initial_mesh
 from single_layer import SingleLayerOperator
 import time
 from parametrization import Circle, UnitSquare, LShape
-from quadrature import gauss_quadrature_scheme, ProductScheme2D
+from quadrature import log_log_quadrature_scheme, log_quadrature_scheme, gauss_quadrature_scheme, ProductScheme2D, QuadScheme2D, QuadpyScheme2D
 import quadpy
+
+
+def prolongate(vec_coarse, elems_coarse, elems_fine):
+    elem_coarse_2_idx = {k: v for v, k in enumerate(elems_coarse)}
+    vec_fine = np.zeros(len(elems_fine))
+
+    for j, elem_fine in enumerate(elems_fine):
+        elem_coarse = elem_fine
+        while elem_coarse not in elem_coarse_2_idx:
+            assert elem_coarse.parent
+            elem_coarse = elem_coarse.parent
+        assert elem_coarse in elem_coarse_2_idx
+        i = elem_coarse_2_idx[elem_coarse]
+        vec_fine[j] = vec_coarse[i]
+    return vec_fine
 
 
 def u(t, xy):
@@ -55,14 +70,20 @@ pts_T = [0.01, 0.1, 0.25, 0.5, 0.75, 1]
 dofs = []
 errs_l2 = []
 errs_estim = []
+errs_hierch = []
 errs_pointwise = [[] for _ in pts_T]
-for k in range(10):
+elems_prev = None
+Phi_prev = None
+for k in range(7):
     elems_cur = list(mesh.leaf_elements)
+    elems_cur.sort(key=lambda elem: elem.vertices[0].tx)
+    print(elems_cur)
     N = len(elems_cur)
     print('Loop with {} dofs'.format(N))
     SL = SingleLayerOperator(mesh)
     dofs.append(N)
 
+    print(mesh.gmsh(), file=open("./data/{}.gmsh".format(mesh.md5()), "w"))
     #time_mat_begin = time.time()
     #mat = SL.bilform_matrix(cache_dir='data')
     #print('Calculating matrix took {}s'.format(time.time() - time_mat_begin))
@@ -114,6 +135,29 @@ for k in range(10):
         print('Calculating initial potential took {}s'.format(time.time() -
                                                               time_rhs_begin))
         print("Stored Initial Operator to {}".format(cache_M0_fn))
+
+    rhs = -M0_u0
+
+    # Calculate the hierarchical basis estimator.
+    if k:
+        time_hierach_begin = time.time()
+        elem_2_idx_fine = {k: v for v, k in enumerate(elems_cur)}
+        Phi_prev_prolong = prolongate(Phi_prev, elems_prev, elems_cur)
+        VPhi_prev = mat @ Phi_prev_prolong
+        estim = np.zeros(len(elems_prev))
+        for i, elem_coarse in enumerate(elems_prev):
+            elems_fine = []
+            for child in elem_coarse.children:
+                elems_fine += child.children
+            assert len(elems_fine) == 4
+
+            for elem in elems_fine:
+                j = elem_2_idx_fine[elem]
+                estim[i] += abs(rhs[j] - VPhi_prev[j])**2 / mat[j, j]
+
+        errs_hierch.append(np.sqrt(np.sum(estim)))
+        print('Error estimation of hierarhical estimator took {}s'.format(
+            time.time() - time_hierach_begin))
 
     # Solve.
     time_solve_begin = time.time()
@@ -183,49 +227,79 @@ for k in range(10):
     err_estim_sqr = np.zeros(N)
     mu = 1 / 2
     nu = 1 / 4
-    err_order = 3
-    gauss_2d = ProductScheme2D(gauss_quadrature_scheme(err_order))
-    #quad_scheme = quadpy.get_good_scheme(3)
+    err_order = 5
+    quad_scheme = quadpy.c2.schemes['albrecht_collatz_3']()
+    quad_scheme = quadpy.c2.get_good_scheme(3)
+    err_order = quad_scheme.degree
+    quad_2d = QuadpyScheme2D(quad_scheme)
+    quad_2d = ProductScheme2D(log_log_quadrature_scheme(7, 2),
+                              log_log_quadrature_scheme(7, 2))
     calc_dict = {}
-    for i, elem in enumerate(elems_cur):
-        # Evaluate the residual squared.
-        def residual_squared(tx):
-            result = np.zeros(tx.shape[1])
-            for i, (t, x_hat) in enumerate(zip(tx[0], tx[1])):
-                x = elem.gamma_space(x_hat)
-                # Evaluate the SL for our trial function.
-                VPhi = 0
-                for j, elem_trial in enumerate(elems_cur):
-                    VPhi += Phi_cur[j] * SL.evaluate(elem_trial, t, x_hat, x)
+    eval_dict = {}
+    #for i, elem in enumerate(elems_cur):
+    #    # Evaluate the residual squared.
+    #    def residual_squared(tx):
+    #        result = np.zeros(tx.shape[1])
+    #        for i, (t, x_hat) in enumerate(zip(tx[0], tx[1])):
+    #            x = elem.gamma_space(x_hat)
+    #            # Evaluate the SL for our trial function.
+    #            VPhi = 0
+    #            for j, elem_trial in enumerate(elems_cur):
+    #                if t <= elem_trial.time_interval[0]: continue
+    #                tup = (elem_trial.time_interval[0] - t,
+    #                       elem_trial.space_interval[0], x_hat)
+    #                if not tup in eval_dict:
+    #                    eval_dict[tup] = SL.evaluate(elem_trial, t, x_hat, x)
+    #                VPhi += Phi_cur[j] * eval_dict[tup]
 
-                # Compare with rhs.
-                #result[i] = VPhi + M0.evaluate_mesh(t, x, initial_mesh)
-                result[i] = VPhi + M0u0(t, x)
-            return result**2
+    #                #VPhi += Phi_cur[j] * SL.evaluate(elem_trial, t, x_hat, x)
 
-        # Create initial mesh
-        #c, d = elem.space_interval
-        #initial_mesh = UnitSquareBoundaryRefined(elem.gamma_space(c),
-        #                                         elem.gamma_space(d))
+    #            # Compare with rhs.
+    #            #result[i] = VPhi + M0.evaluate_mesh(t, x, initial_mesh)
+    #            result[i] = VPhi + M0u0(t, x)
+    #        return result**2
 
-        t = elem.time_interval[0]
-        x = elem.space_interval[0] - math.floor(elem.space_interval[0])
-        if not (t, x) in calc_dict:
-            calc_dict[t, x] = (elem.h_x**(-2 * mu) +
-                               elem.h_t**(-2 * nu)) * gauss_2d.integrate(
-                                   residual_squared, *elem.time_interval, *
-                                   elem.space_interval)
+    #    # Create initial mesh
+    #    #c, d = elem.space_interval
+    #    #initial_mesh = UnitSquareBoundaryRefined(elem.gamma_space(c),
+    #    #                                         elem.gamma_space(d))
 
-        err_estim_sqr[i] = calc_dict[t, x]
+    #    t = elem.vertices[0].t
+    #    x = elem.vertices[0].x % 1
+    #    if not (t, x) in calc_dict:
+    #        calc_dict[t, x] = (elem.h_x**(-2 * mu) +
+    #                           elem.h_t**(-2 * nu)) * quad_2d.integrate(
+    #                               residual_squared, *elem.time_interval, *
+    #                               elem.space_interval)
+
+    #    err_estim_sqr[i] = calc_dict[t, x]
 
     errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
     print('Error estimation of weighted residual of order {} took {}s'.format(
         err_order,
         time.time() - time_l2_begin))
 
-    print('N={}\terr_estim={}'.format(N, errs_estim[-1]))
-    print('N={}\terr_l2={}'.format(N, errs_l2[-1]))
+    if k:
+        rates_estim = np.log(
+            np.array(errs_estim[1:]) / np.array(errs_estim[:-1])) / np.log(
+                np.array(dofs[1:]) / np.array(dofs[:-1]))
+        rates_l2 = np.log(
+            np.array(errs_l2[1:]) / np.array(errs_l2[:-1])) / np.log(
+                np.array(dofs[1:]) / np.array(dofs[:-1]))
+        if k > 1:
+            rates_hierch = np.log(
+                np.array(errs_hierch[1:]) /
+                np.array(errs_hierch[:-1])) / np.log(
+                    np.array(dofs[2:]) / np.array(dofs[:-2]))
+    else:
+        rates_estim = []
+        rates_l2 = []
+        rates_hierch = []
 
-    print('\ndofs={}\nerrs_l2={}\nerr_estim={}\nerrs_pointwise={}\n------'.
-          format(dofs, errs_l2, errs_estim, errs_pointwise))
+    print(
+        '\ndofs={}\nerrs_l2={}\nerr_estim={}\nerr_hierch={}\n\nrates_l2={}\nrates_estim={}\nrates_hierch={}\n------'
+        .format(dofs, errs_l2, errs_estim, errs_hierch, rates_l2, rates_estim,
+                rates_hierch))
     mesh.uniform_refine()
+    Phi_prev = Phi_cur
+    elems_prev = elems_cur

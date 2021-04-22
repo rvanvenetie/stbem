@@ -32,9 +32,9 @@ dofs = []
 errs_l2 = []
 errs_estim = []
 h_x = 2
-for k in range(5):
+for k in range(10):
     h_x = h_x / 2
-    h_t = h_x**(6 / 5)
+    h_t = h_x  # **(6 / 5)
     N_x = 4 * round(1 / h_x)
     N_t = round(1 / h_t)
     mesh_space = [Fraction(4 * j, N_x) for j in range(N_x + 1)]
@@ -91,7 +91,6 @@ for k in range(5):
     except:
         M0_u0 = np.zeros(shape=N)
         for j, elem_test in enumerate(elems_cur):
-            M0_u0_t[j], _ = M0.linform(elem_test)
             if elem_test.vertices[0].x >= 1: continue
             M0_u0[j], _ = M0.linform(elem_test)
         for j, elem_test in enumerate(elems_cur):
@@ -137,7 +136,13 @@ for k in range(5):
                 # Evaluate the SL for our trial function.
                 VPhi = 0
                 for j, elem_trial in enumerate(elems_cur):
-                    VPhi += Phi_cur[j] * SL.evaluate(elem_trial, t, x_hat, x)
+                    if t <= elem_trial.time_interval[0]: continue
+                    tup = (elem_trial.time_interval[0] - t,
+                           elem_trial.space_interval[0], x_hat)
+                    if not tup in calc_dict:
+                        calc_dict[tup] = SL.evaluate(elem_trial, t, x_hat, x)
+
+                    VPhi += Phi_cur[j] * calc_dict[tup]
 
                 # Compare with rhs.
                 result[i] = VPhi + M0.evaluate(t, x)

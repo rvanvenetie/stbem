@@ -1,4 +1,5 @@
-from quadrature import log_quadrature_scheme, gauss_quadrature_scheme, sqrt_quadrature_scheme, gauss_sqrtinv_quadrature_scheme, ProductScheme2D, DuffyScheme2D, gauss_x_quadrature_scheme, DuffySchemeIdentical3D, ProductScheme3D, DuffySchemeTouch3D
+from quadrature import log_quadrature_scheme, log_log_quadrature_scheme, gauss_quadrature_scheme, sqrt_quadrature_scheme, gauss_sqrtinv_quadrature_scheme, ProductScheme2D, DuffyScheme2D, gauss_x_quadrature_scheme, DuffySchemeIdentical3D, ProductScheme3D, DuffySchemeTouch3D, QuadpyScheme2D
+import quadpy
 from parametrization import circle, UnitSquare
 from scipy.special import expi, exp1
 import quadrature_rules
@@ -36,6 +37,39 @@ def test_log_quadrature():
         for k in range(N_poly_log + 1):
             f = lambda x: x**k * np.log(x)
             assert scheme.integrate(f, 0, 1) == approx(-1. / (1 + k)**2)
+            #assert scheme.integrate(f, 0, 3) == approx(
+            #    (3**(1 + k) * (-1 + np.log(3) + k * np.log(3))) / (1 + k)**2)
+
+
+def test_log_log_quadrature():
+    for N_poly, N_poly_log in quadrature_rules.LOG_LOG_QUAD_RULES:
+        print(N_poly, N_poly_log)
+        scheme = log_log_quadrature_scheme(N_poly, N_poly_log)
+
+        # First, check that it integrates polynomials exactly.
+        for k in range(N_poly + 1):
+            print(k)
+            f = lambda x: x**k
+            assert scheme.integrate(f, 0, 1) == approx(1. / (1 + k))
+            assert scheme.integrate(f, 1, 5) == approx(
+                (5**(k + 1) - 1.) / (1. + k))
+
+        # Secondly, check that it integrates log(x) x^k exactly.
+        for k in range(N_poly_log + 1):
+            f = lambda x: x**k * np.log(x)
+            assert scheme.integrate(f, 0, 1) == approx(-1. / (1 + k)**2)
+            #assert scheme.integrate(f, 0, 3) == approx(
+            #    (3**(1 + k) * (-1 + np.log(3) + k * np.log(3))) / (1 + k)**2)
+
+        # Secondly, check that it integrates log(1-x) x^k exactly.
+        vals = [
+            -1, -(3 / 4), -(11 / 18), -(25 / 48), -(137 / 300), -(49 / 120),
+            -(363 / 980), -(761 / 2240), -(7129 / 22680), -(7381 / 25200),
+            -(83711 / 304920)
+        ]
+        for k in range(N_poly_log + 1):
+            f = lambda x: x**k * np.log(1 - x)
+            assert scheme.integrate(f, 0, 1) == approx(vals[k])
             #assert scheme.integrate(f, 0, 3) == approx(
             #    (3**(1 + k) * (-1 + np.log(3) + k * np.log(3))) / (1 + k)**2)
 
@@ -92,6 +126,22 @@ def test_product_quadrature():
 
         for i in range(N_poly_x + 1):
             for j in range(N_poly_y + 1):
+                f = lambda x: x[0]**i * x[1]**j
+                assert scheme.integrate(f, 0, 1, 0,
+                                        1) == approx(1. / (1 + i + j + i * j))
+                assert scheme.integrate(f, 2, 5, 3, 10) == approx(
+                    ((2**(1 + i) - 5**(1 + i)) *
+                     (3**(1 + j) - 10**(1 + j))) / ((1 + j) * (1 + i)))
+
+
+def test_quadpy_schemes():
+    for poly in range(11):
+        quad_scheme = quadpy.c2.get_good_scheme(poly)
+        scheme = QuadpyScheme2D(quad_scheme)
+
+        for i in range(poly + 1):
+            for j in range(poly + 1):
+                if i + j >= poly: continue
                 f = lambda x: x[0]**i * x[1]**j
                 assert scheme.integrate(f, 0, 1, 0,
                                         1) == approx(1. / (1 + i + j + i * j))

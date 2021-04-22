@@ -1,6 +1,6 @@
 import numpy as np
 import quadrature_rules
-from quadrature_rules import log_quadrature_rule, sqrt_quadrature_rule, sqrtinv_quadrature_rule, gauss_sqrtinv_quadrature_rule, gauss_x_quadrature_rule, gauss_log_quadrature_rule
+from quadrature_rules import log_quadrature_rule, log_log_quadrature_rule, sqrt_quadrature_rule, sqrtinv_quadrature_rule, gauss_sqrtinv_quadrature_rule, gauss_x_quadrature_rule, gauss_log_quadrature_rule
 
 
 def gauss_quadrature_scheme(N_poly):
@@ -41,6 +41,14 @@ def log_quadrature_scheme(N_poly, N_poly_log):
     p(x) + q(x)log(x) for deg(p) <= N_poly and deg(q) <= N_log.
     """
     nodes, weights = log_quadrature_rule(N_poly, N_poly_log)
+    return QuadScheme1D(nodes, weights)
+
+
+def log_log_quadrature_scheme(N_poly, N_poly_log):
+    """ Returns quadrature rule that is exact on 0^1 for
+    p(x) + q(x)log(x) + k(x)log(1-x) for deg(p) <= N_poly, deg(k) <= deg(q) <= N_log.
+    """
+    nodes, weights = log_log_quadrature_rule(N_poly, N_poly_log)
     return QuadScheme1D(nodes, weights)
 
 
@@ -115,6 +123,12 @@ class ProductScheme2D(QuadScheme2D):
         ])
         weights = np.kron(scheme_x.weights, scheme_y.weights)
         super().__init__(points=points, weights=weights)
+
+
+class QuadpyScheme2D(QuadScheme2D):
+    def __init__(self, quad_scheme):
+        super().__init__(points=(quad_scheme.points + 1) * 0.5,
+                         weights=quad_scheme.weights)
 
 
 class DuffyScheme2D(QuadScheme2D):
