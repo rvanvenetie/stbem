@@ -199,6 +199,9 @@ if __name__ == "__main__":
             rates_estim = np.log(
                 np.array(errs_estim[1:]) / np.array(errs_estim[:-1])) / np.log(
                     np.array(dofs[1:]) / np.array(dofs[:-1]))
+            rates_pointwise = np.log(
+                np.array(err_pointwise[1:]) / np.array(err_pointwise[:-1])) / np.log(
+                    np.array(dofs[1:]) / np.array(dofs[:-1]))
             if k > 1:
                 rates_hierch = np.log(
                     np.array(errs_hierch[1:]) /
@@ -207,10 +210,11 @@ if __name__ == "__main__":
         else:
             rates_estim = []
             rates_hierch = []
+            rates_pointwise = []
 
         print(
-            '\ndofs={}\nerr_estim={}\nerr_pointwise={}\nerr_hierch={}\n\nrates_estim={}\nrates_hierch={}\n------'
-            .format(dofs, errs_estim, err_pointwise, errs_hierch, rates_estim, rates_hierch))
+            '\ndofs={}\nerr_estim={}\nerr_pointwise={}\nerr_hierch={}\n\nrates_estim={}\nrates_pointwise={}\nrates_hierch={}\n------'
+            .format(dofs, errs_estim, err_pointwise, errs_hierch, rates_estim, rates_pointwise,rates_hierch))
 
         # Refine
         mesh.uniform_refine()
