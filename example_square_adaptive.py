@@ -136,6 +136,18 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
     mat = SL(elems_fine)
     VPhi = mat @ Phi_fine
 
+    # Checking quadrature!
+    mat_coarse = SL(elems_coarse)
+    for i, elem_test in enumerate(elems_coarse):
+        for j, elem_trial in enumerate(elems_coarse):
+            val_fine = 0
+            for child_test in elem_2_children[i]:
+                k = elem_2_idx_fine[child_test]
+                for child_trial in elem_2_children[j]:
+                    h = elem_2_idx_fine[child_trial]
+                    val_fine += mat[k, h]
+            assert mat_coarse[i, j] == approx(val_fine, abs=0,rel=1e-8)
+
     # Evaluate the RHS on the fine mesh.
     rhs = RHS(elems_fine)
 
@@ -204,7 +216,7 @@ if __name__ == "__main__":
     print('Running parallel with {} threads.'.format(N_procs))
 
     mesh = MeshParametrized(UnitSquare())
-    theta = 0.9
+    theta = 0.7
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
                          initial_mesh=UnitSquareBoundaryRefined)
