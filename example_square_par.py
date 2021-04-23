@@ -67,6 +67,10 @@ def error_estim_l2(i):
     elem = elems_cur[i]
     if elem.vertices[0].x >= 1: return 0
 
+    #c, d = elem.space_interval
+    #initial_mesh = UnitSquareBoundaryRefined(elem.gamma_space(c),
+    #                                             elem.gamma_space(d))
+
     # Evaluate the residual squared.
     def residual_squared(tx):
         result = np.zeros(tx.shape[1])

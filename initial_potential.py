@@ -24,7 +24,7 @@ class InitialOperator:
                  bdr_mesh,
                  u0,
                  initial_mesh=None,
-                 quad_int=10,
+                 quad_int=12,
                  quad_eval=19):
         self.u0 = u0
         self.bdr_mesh = bdr_mesh

@@ -195,7 +195,7 @@ if __name__ == "__main__":
     errs_l2 = []
     errs_estim = []
     errs_hierch = []
-    for k in range(10):
+    for k in range(100):
         elems = list(mesh.leaf_elements)
         N = len(mesh.leaf_elements)
         print('Loop with {} dofs'.format(N))
