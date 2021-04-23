@@ -90,6 +90,8 @@ if __name__ == "__main__":
     errs_hierch = []
     elems_prev = None
     Phi_prev = None
+    val_exact = u(0.5, [0, 0])
+    err_pointwise = []
     for k in range(10):
         elems_cur = list(mesh.leaf_elements)
         elems_cur.sort(key=lambda elem: elem.vertices[0].tx)
@@ -173,6 +175,14 @@ if __name__ == "__main__":
         Phi_cur = np.linalg.solve(mat, rhs)
         print('Solving matrix took {}s'.format(time.time() - time_solve_begin))
 
+        # Evaluate pointwise error in (0.5, [0, 0])
+        val = 0
+        for phi_i, elem in zip(Phi_cur, elems_cur):
+            val += phi_i * SL.potential(elem, 0.5, np.array([[0],[0]]))
+        #val = np.dot(Phi_cur, SL.potential_vector(0.5, np.array([[0], [0]])))
+        print('N={}\terr_pointwise={}'.format(N, (val - val_exact) / val_exact))
+        err_pointwise.append(abs(val - val_exact))
+
         # Calculate the weighted l2 error of the residual set global vars.
         time_l2_begin = time.time()
         err_order = 3
@@ -199,8 +209,8 @@ if __name__ == "__main__":
             rates_hierch = []
 
         print(
-            '\ndofs={}\nerr_estim={}\nerr_hierch={}\n\nrates_estim={}\nrates_hierch={}\n------'
-            .format(dofs, errs_estim, errs_hierch, rates_estim, rates_hierch))
+            '\ndofs={}\nerr_estim={}\nerr_pointwise={}\nerr_hierch={}\n\nrates_estim={}\nrates_hierch={}\n------'
+            .format(dofs, errs_estim, err_pointwise, errs_hierch, rates_estim, rates_hierch))
 
         # Refine
         mesh.uniform_refine()
