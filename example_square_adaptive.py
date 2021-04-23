@@ -263,6 +263,9 @@ if __name__ == "__main__":
         assert np.sqrt(cumsum) >= theta * err_tot
 
         print('Marked {} / {} elements'.format(len(marked), N))
+        # First refine the coarse elements.
+        marked.sort(key=lambda elem: elem.levels)
         for elem in marked:
+            assert not elem.children
             mesh.refine(elem)
-        print('After refinement {} elements'.format(len(marked), N))
+        print('After refinement {} elements'.format(len(mesh.leaf_elements)))
