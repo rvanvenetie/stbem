@@ -141,9 +141,18 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
 
     estim = np.zeros(len(elems_coarse))
     for i, elem_coarse in enumerate(elems_coarse):
-        for elem in elem_2_children[i]:
-            j = elem_2_idx_fine[elem]
-            estim[i] += abs(rhs[j] - VPhi[j])**2 / mat[j, j]
+        children = [elem_2_idx_fine[elem] for elem in elem_2_children[i]]
+        scaling = sum(mat[j, j] for j in children)
+
+        estim_1, estim_2, estim_3 = 0, 0, 0
+        for j, c in zip(children, [1, 1, -1, -1]):
+            estim_1 += abs(rhs[j] * c - VPhi[j] * c)**2 / scaling
+        for j, c in zip(children, [1, -1, 1, -1]):
+            estim_2 += abs(rhs[j] * c - VPhi[j] * c)**2 / scaling
+        for j, c in zip(children, [1, -1, -1, 1]):
+            estim_3 += abs(rhs[j] * c - VPhi[j] * c)**2 / scaling
+
+        estim[i] = estim_1 + estim_2 + estim_3
 
     return np.sqrt(np.sum(estim)), estim
 
