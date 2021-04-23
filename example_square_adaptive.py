@@ -186,9 +186,7 @@ if __name__ == "__main__":
     print('Running parallel with {} threads.'.format(N_procs))
 
     mesh = MeshParametrized(UnitSquare())
-    print(mesh.leaf_elements)
-    mesh.uniform_refine()
-    print(mesh.leaf_elements)
+    theta = 0.8
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
                          initial_mesh=UnitSquareBoundaryRefined)
@@ -230,7 +228,7 @@ if __name__ == "__main__":
 
         # Do the hierarhical error estimator.
         time_hierarch_begin = time.time()
-        err_tot, err_loc = HierarchicalErrorEstimator(Phi, elems, SL_matrix,
+        err_tot, eta_sqr = HierarchicalErrorEstimator(Phi, elems, SL_matrix,
                                                       RHS_vector)
         errs_hierch.append(err_tot)
         print('Hierarchical error estimator took {}s'.format(
@@ -251,4 +249,20 @@ if __name__ == "__main__":
         print(
             '\ndofs={}\nerrs_l2={}\nerr_hierch={}\n\nrates_l2={}\nrates_hierch={}\n------'
             .format(dofs, errs_l2, errs_hierch, rates_l2, rates_hierch))
-        mesh.uniform_refine()
+
+        print('Dorfler marking with theta = {}'.format(theta))
+        s_idx = list(reversed(np.argsort(eta_sqr)))
+        eta_tot_sqr = np.sum(eta_sqr)
+        cumsum = 0.0
+        marked = []
+        for i in s_idx:
+            marked.append(elems[i])
+            cumsum += eta_sqr[i]
+            if cumsum >= eta_tot_sqr * theta**2:
+                break
+        assert np.sqrt(cumsum) >= theta * err_tot
+
+        print('Marked {} / {} elements'.format(len(marked), N))
+        for elem in marked:
+            mesh.refine(elem)
+        print('After refinement {} elements'.format(len(marked), N))
