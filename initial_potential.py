@@ -24,7 +24,7 @@ class InitialOperator:
                  bdr_mesh,
                  u0,
                  initial_mesh=None,
-                 quad_int=12,
+                 quad_int=10,
                  quad_eval=19):
         self.u0 = u0
         self.bdr_mesh = bdr_mesh
@@ -119,10 +119,12 @@ class InitialOperator:
                 gamma_K = lambda y: n0 + (n1 - n0) * y
                 gamma_Q = elem.gamma()
 
-            f = lambda xyz: self.u0(gamma_Q(xyz[0], xyz[2])) * G_time(
-                np.sum((gamma_Q(xyz[0], xyz[2]) - gamma_K(xyz[1]))**2, axis=0))
+            # We will use duffy 3d.
+            xyz = self.duff_3d_touch.points
+            xz = gamma_Q(xyz[0], xyz[2])
+            y = gamma_K(xyz[1])
 
-            fx = f(self.duff_3d_touch.points)
+            fx = self.u0(xz) * G_time(np.sum((xz - y)**2, axis=0))
             val = elem.diam**2 * (d - c) * np.dot(fx,
                                                   self.duff_3d_touch.weights)
             ips.append((elem, val))

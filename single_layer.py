@@ -40,8 +40,8 @@ def f(a, b):
         return noop
     z = a - b
 
-    def f_z(x):
-        a_z = np.sum(x**2, axis=0) / (4 * z)
+    def f_z(x_sqr):
+        a_z = x_sqr / (4 * z)
         return FPI_INV * (z * np.exp(-a_z) + z * (1 + a_z) * expi(-a_z))
 
     return f_z
@@ -58,11 +58,30 @@ def time_integrated_kernel(t, a, b):
 def double_time_integrated_kernel(a, b, c, d):
     """ Returns kernel integrated in time over [a,b] x [c, d], """
     assert a < b and c < d
-    f_bd = f(b, d)
-    f_bc = f(b, c)
-    f_ca = f(a, c)
-    f_da = f(a, d)
-    return lambda x: f_bd(x) - f_bc(x) + f_ca(x) - f_da(x)
+
+    def G(x):
+        x_sqr = np.sum(x**2, axis=0)
+        result = 0
+        if b > d:
+            z = b - d
+            a_z = x_sqr / (4 * z)
+            result += FPI_INV * (z * np.exp(-a_z) + z * (1 + a_z) * expi(-a_z))
+        if b > c:
+            z = b - c
+            a_z = x_sqr / (4 * z)
+            result -= FPI_INV * (z * np.exp(-a_z) + z * (1 + a_z) * expi(-a_z))
+        if a > c:
+            z = a - c
+            a_z = x_sqr / (4 * z)
+            result += FPI_INV * (z * np.exp(-a_z) + z * (1 + a_z) * expi(-a_z))
+        if a > d:
+            z = a - d
+            a_z = x_sqr / (4 * z)
+            result -= FPI_INV * (z * np.exp(-a_z) + z * (1 + a_z) * expi(-a_z))
+
+        return result
+
+    return G
 
 
 class SingleLayerOperator:
