@@ -245,7 +245,7 @@ class SingleLayerOperator:
 
     def rhs_vector(self, f, gauss_order=23):
         """ Returns the vector f(1_elem) for all elements in the mesh. """
-        gauss_scheme = gauss_quadrature_scheme(23)
+        gauss_scheme = gauss_quadrature_scheme(gauss_order)
         gauss_2d = ProductScheme2D(gauss_scheme, gauss_scheme)
         elems = list(self.mesh.leaf_elements)
         N = len(elems)

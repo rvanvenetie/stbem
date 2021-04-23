@@ -22,7 +22,7 @@ def l2(f):
 
 
 def u(t, x):
-    if t == 0: return 0
+    #if t == 0: return 0
     return 1 / (4 * np.pi * t) * np.exp(-((x[0] - 1)**2 + (x[1] - 1)**2) /
                                         (4 * t))
 

@@ -62,7 +62,7 @@ def SL_matrix(elems):
     return mat
 
 
-def IP_vector(elems):
+def RHS_vector(elems):
     """ Evaluate the initial potential vector in parallel. """
     global elems_glob
     elems_glob = elems
@@ -72,7 +72,7 @@ def IP_vector(elems):
     cache_M0_fn = "{}/M0_dofs_{}_{}.npy".format('data', N, md5)
     if os.path.isfile(cache_M0_fn):
         print("Loaded Initial Operator from file {}".format(cache_M0_fn))
-        return np.load(cache_M0_fn)
+        return -np.load(cache_M0_fn)
 
     time_rhs_begin = time.time()
     M0_u0 = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
@@ -80,7 +80,7 @@ def IP_vector(elems):
     print('Calculating initial potential took {}s'.format(time.time() -
                                                           time_rhs_begin))
     print("Stored Initial Operator to {}".format(cache_M0_fn))
-    return M0_u0
+    return -M0_u0
 
 
 def HierarchicalErrorEstimator(Phi, mesh, SL, RHS):
@@ -176,7 +176,7 @@ if __name__ == "__main__":
         mat = SL_matrix(elems)
 
         # Calculate initial potential.
-        rhs = -IP_vector(elems)
+        rhs = RHS_vector(elems)
 
         # Solve.
         time_solve_begin = time.time()
@@ -199,7 +199,7 @@ if __name__ == "__main__":
         # Do the hierarhical error estimator.
         time_hierarch_begin = time.time()
         err_tot, err_loc = HierarchicalErrorEstimator(Phi, mesh, SL_matrix,
-                                                      IP_vector)
+                                                      RHS_vector)
         errs_hierch.append(err_tot)
         print('Hierarchical error estimator took {}s'.format(
             time.time() - time_hierarch_begin))
