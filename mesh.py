@@ -1,4 +1,5 @@
 import random
+import numpy as np
 from collections import OrderedDict
 from parametrization import Circle, UnitInterval, UnitSquare, LShape, PiecewiseParametrization
 import hashlib
@@ -86,6 +87,9 @@ class Edge:
         assert self.on_boundary and not self.glued
         return []
 
+    def __repr__(self):
+        return "Edge({}, {})".format(self.vertices[0], self.vertices[1])
+
 
 class Element:
     def __init__(self, edges, levels, parent=None):
@@ -96,7 +100,6 @@ class Element:
         self.levels = levels
         self.vertices = [edge.vertices[0] for edge in edges]
         self.parent = parent
-        self.children = []
 
         if parent:
             self.gamma_space = parent.gamma_space
@@ -128,7 +131,7 @@ class Element:
         self.time_interval = float(self.vertices[0].t), float(
             self.vertices[2].t)
         self.space_interval = float(self.vertices[0].x), float(
-            self.vertices[1].x)
+            self.vertices[2].x)
         self.h_t = float(abs(self.vertices[2].t - self.vertices[0].t))
         self.h_x = float(abs(self.vertices[2].x - self.vertices[0].x))
 
@@ -252,7 +255,6 @@ class Mesh:
                     self.refine_axis(nbr_elem, ax)
 
         # Remove current elem from the currente dges.
-        assert not elem.children
         for edge in elem.edges:
             assert edge.elem == elem
             edge.elem = None
@@ -376,6 +378,22 @@ class MeshParametrized(Mesh):
             leaves = list(self.leaf_elements)
             for elem in leaves:
                 self.refine_space(elem)
+
+
+def Prolongate(vec_coarse, elems_coarse, elems_fine):
+    """ Helper function to prolongate a vector. """
+    elem_coarse_2_idx = {k: v for v, k in enumerate(elems_coarse)}
+    vec_fine = np.zeros(len(elems_fine))
+
+    for j, elem_fine in enumerate(elems_fine):
+        elem_coarse = elem_fine
+        while elem_coarse not in elem_coarse_2_idx:
+            assert elem_coarse.parent
+            elem_coarse = elem_coarse.parent
+        assert elem_coarse in elem_coarse_2_idx
+        i = elem_coarse_2_idx[elem_coarse]
+        vec_fine[j] = vec_coarse[i]
+    return vec_fine
 
 
 if __name__ == "__main__":
