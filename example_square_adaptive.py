@@ -186,7 +186,7 @@ if __name__ == "__main__":
     print('Running parallel with {} threads.'.format(N_procs))
 
     mesh = MeshParametrized(UnitSquare())
-    theta = 0.8
+    theta = 0.9
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
                          initial_mesh=UnitSquareBoundaryRefined)
