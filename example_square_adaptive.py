@@ -119,8 +119,8 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
         children = [
             DummyElement(vertices=[v0, v01, vi, v30], parent=elem_coarse),
             DummyElement(vertices=[v01, v1, v12, vi], parent=elem_coarse),
+            DummyElement(vertices=[v30, vi, v23, v3], parent=elem_coarse),
             DummyElement(vertices=[vi, v12, v2, v23], parent=elem_coarse),
-            DummyElement(vertices=[v30, vi, v23, v3], parent=elem_coarse)
         ]
 
         elem_2_children.append(children)
@@ -186,6 +186,9 @@ if __name__ == "__main__":
     print('Running parallel with {} threads.'.format(N_procs))
 
     mesh = MeshParametrized(UnitSquare())
+    print(mesh.leaf_elements)
+    mesh.uniform_refine()
+    print(mesh.leaf_elements)
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
                          initial_mesh=UnitSquareBoundaryRefined)
@@ -227,10 +230,8 @@ if __name__ == "__main__":
 
         # Do the hierarhical error estimator.
         time_hierarch_begin = time.time()
-        print(len(mesh.leaf_elements))
         err_tot, err_loc = HierarchicalErrorEstimator(Phi, elems, SL_matrix,
                                                       RHS_vector)
-        print(len(mesh.leaf_elements))
         errs_hierch.append(err_tot)
         print('Hierarchical error estimator took {}s'.format(
             time.time() - time_hierarch_begin))
