@@ -1,5 +1,6 @@
 import numpy as np
 from copy import deepcopy
+from mesh import Vertex
 import multiprocessing as mp
 import os
 from mesh import Prolongate
@@ -83,16 +84,49 @@ def RHS_vector(elems):
     return -M0_u0
 
 
-def HierarchicalErrorEstimator(Phi, mesh, SL, RHS):
+class DummyElement:
+    """ Needed for calculation of the Hierarchical Error Estimator. """
+    def __init__(self, vertices, parent):
+        self.vertices = vertices
+        self.parent = parent
+        self.gamma_space = parent.gamma_space
+
+        self.time_interval = float(self.vertices[0].t), float(
+            self.vertices[2].t)
+        self.space_interval = float(self.vertices[0].x), float(
+            self.vertices[2].x)
+        self.h_t = float(abs(self.vertices[2].t - self.vertices[0].t))
+        self.h_x = float(abs(self.vertices[2].x - self.vertices[0].x))
+
+    def __repr__(self):
+        return "Elem(t={}, x={})".format(self.time_interval,
+                                         self.space_interval)
+
+
+def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
     """ Returns the hierarchical basis estimator for given function. """
 
     # Calcualte uniform refinement of the mesh.
-    leaf_elems = mesh.leaf_elements
-    elems_coarse = list(leaf_elems)
-    mesh.uniform_refine()
-    elems_fine = list(mesh.leaf_elements)
-    mesh.leaf_elements = leaf_elems
+    elem_2_children = []
+    for elem_coarse in elems_coarse:
+        v0, v1, v2, v3 = elem_coarse.vertices
+        v01 = Vertex(t=(v0.t + v1.t) / 2, x=(v0.x + v1.x) / 2, idx=-1)
+        v12 = Vertex(t=(v1.t + v2.t) / 2, x=(v1.x + v2.x) / 2, idx=-1)
+        v23 = Vertex(t=(v2.t + v3.t) / 2, x=(v2.x + v3.x) / 2, idx=-1)
+        v30 = Vertex(t=(v3.t + v0.t) / 2, x=(v3.x + v0.x) / 2, idx=-1)
+        vi = Vertex(t=(v0.t + v2.t) / 2, x=(v0.x + v2.x) / 2, idx=-1)
 
+        children = [
+            DummyElement(vertices=[v0, v01, vi, v30], parent=elem_coarse),
+            DummyElement(vertices=[v01, v1, v12, vi], parent=elem_coarse),
+            DummyElement(vertices=[vi, v12, v2, v23], parent=elem_coarse),
+            DummyElement(vertices=[v30, vi, v23, v3], parent=elem_coarse)
+        ]
+
+        elem_2_children.append(children)
+
+    # Flatten list and calculate mapping of indices.
+    elems_fine = [child for children in elem_2_children for child in children]
     elem_2_idx_fine = {k: v for v, k in enumerate(elems_fine)}
 
     # Prolongate Phi to fine mesh.
@@ -107,12 +141,7 @@ def HierarchicalErrorEstimator(Phi, mesh, SL, RHS):
 
     estim = np.zeros(len(elems_coarse))
     for i, elem_coarse in enumerate(elems_coarse):
-        children_fine = []
-        for child in elem_coarse.children:
-            children_fine += child.children
-        assert len(children_fine) == 4
-
-        for elem in children_fine:
+        for elem in elem_2_children[i]:
             j = elem_2_idx_fine[elem]
             estim[i] += abs(rhs[j] - VPhi[j])**2 / mat[j, j]
 
@@ -198,8 +227,10 @@ if __name__ == "__main__":
 
         # Do the hierarhical error estimator.
         time_hierarch_begin = time.time()
-        err_tot, err_loc = HierarchicalErrorEstimator(Phi, mesh, SL_matrix,
+        print(len(mesh.leaf_elements))
+        err_tot, err_loc = HierarchicalErrorEstimator(Phi, elems, SL_matrix,
                                                       RHS_vector)
+        print(len(mesh.leaf_elements))
         errs_hierch.append(err_tot)
         print('Hierarchical error estimator took {}s'.format(
             time.time() - time_hierarch_begin))

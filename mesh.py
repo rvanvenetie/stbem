@@ -100,6 +100,7 @@ class Element:
         self.levels = levels
         self.vertices = [edge.vertices[0] for edge in edges]
         self.parent = parent
+        self.children = []
 
         if parent:
             self.gamma_space = parent.gamma_space
@@ -255,6 +256,7 @@ class Mesh:
                     self.refine_axis(nbr_elem, ax)
 
         # Remove current elem from the currente dges.
+        assert not elem.children
         for edge in elem.edges:
             assert edge.elem == elem
             edge.elem = None
