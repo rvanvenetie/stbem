@@ -199,6 +199,9 @@ if __name__ == "__main__":
         elems = list(mesh.leaf_elements)
         N = len(mesh.leaf_elements)
         print('Loop with {} dofs'.format(N))
+        print(mesh.gmsh(use_gamma=True),
+              file=open("./data/adaptive_N_{}_{}.gmsh".format(N, mesh.md5()),
+                        "w"))
         SL = SingleLayerOperator(mesh)
         dofs.append(N)
 

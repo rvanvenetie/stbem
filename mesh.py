@@ -336,7 +336,7 @@ class Mesh:
                                                 float(vertex.x))
         else:
             for vertex in self.vertices:
-                x, y = self.gamma_space.eval(vertex.x)[:, 0]
+                x, y = self.gamma_space.eval(float(vertex.x))[:, 0]
                 result += "{} {} {} {}\n".format(vertex.idx + 1,
                                                  float(vertex.t), x, y)
         result += "$EndNodes\n$Elements\n{}\n".format(len(self.leaf_elements))

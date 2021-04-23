@@ -82,7 +82,8 @@ for k in range(7):
     SL = SingleLayerOperator(mesh)
     dofs.append(N)
 
-    print(mesh.gmsh(), file=open("./data/{}.gmsh".format(mesh.md5()), "w"))
+    print(mesh.gmsh(use_gamma=True),
+          file=open("./data/{}.gmsh".format(mesh.md5()), "w"))
     #time_mat_begin = time.time()
     #mat = SL.bilform_matrix(cache_dir='data')
     #print('Calculating matrix took {}s'.format(time.time() - time_mat_begin))
