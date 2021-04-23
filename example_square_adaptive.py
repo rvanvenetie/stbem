@@ -137,16 +137,16 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
     VPhi = mat @ Phi_fine
 
     # Checking quadrature!
-    mat_coarse = SL(elems_coarse)
-    for i, elem_test in enumerate(elems_coarse):
-        for j, elem_trial in enumerate(elems_coarse):
-            val_fine = 0
-            for child_test in elem_2_children[i]:
-                k = elem_2_idx_fine[child_test]
-                for child_trial in elem_2_children[j]:
-                    h = elem_2_idx_fine[child_trial]
-                    val_fine += mat[k, h]
-            assert mat_coarse[i, j] == approx(val_fine, abs=0,rel=1e-8)
+    #mat_coarse = SL(elems_coarse)
+    #for i, elem_test in enumerate(elems_coarse):
+    #    for j, elem_trial in enumerate(elems_coarse):
+    #        val_fine = 0
+    #        for child_test in elem_2_children[i]:
+    #            k = elem_2_idx_fine[child_test]
+    #            for child_trial in elem_2_children[j]:
+    #                h = elem_2_idx_fine[child_trial]
+    #                val_fine += mat[k, h]
+    #        assert mat_coarse[i, j] == approx(val_fine, abs=0, rel=1e-8)
 
     # Evaluate the RHS on the fine mesh.
     rhs = RHS(elems_fine)
@@ -210,6 +210,42 @@ def M0u0(t, xy):
             np.exp(1j * np.pi * (x + y - 2 * 1j * pit))).real
 
 
+def error_estim_l2(i):
+    global elems_glob
+    global SL
+    global Phi
+    elem = elems_glob[i]
+
+    # Evaluate the residual.
+    def residual(tx):
+        result = np.zeros(tx.shape[1])
+        for i, (t, x_hat) in enumerate(zip(tx[0], tx[1])):
+            x = elem.gamma_space(x_hat)
+
+            # Evaluate the SL for our trial function.
+            VPhi = 0
+            for j, elem_trial in enumerate(elems_glob):
+                VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat, x)
+
+            # Compare with rhs.
+            result[i] = VPhi + M0u0(t, x)
+        return result
+
+    # Evaluate squared integral.
+    err_order = 5
+    gauss_2d = ProductScheme2D(gauss_quadrature_scheme(err_order))
+    t_a, x_a = elem.time_interval[0], elem.space_interval[0]
+    tx = np.array([
+        t_a + elem.h_t * gauss_2d.points[0],
+        x_a + elem.h_x * gauss_2d.points[1]
+    ])
+    res_sqr = np.asarray(residual(tx))**2
+    res_l2 = elem.h_x * elem.h_t * np.dot(res_sqr, gauss_2d.weights)
+
+    # Return the weighted l2 norm.
+    return (elem.h_x**(-1) + elem.h_t**(-1 / 2)) * res_l2
+
+
 if __name__ == "__main__":
     N_procs = mp.cpu_count()
     mp.set_start_method('fork')
@@ -267,7 +303,19 @@ if __name__ == "__main__":
         print('Hierarchical error estimator took {}s'.format(
             time.time() - time_hierarch_begin))
 
+        # Calculate the weighted l2 error of the residual set global vars.
+        time_l2_begin = time.time()
+        elems_glob = elems
+        err_estim_sqr = np.array(
+            mp.Pool(N_procs).map(error_estim_l2, range(N)))
+        errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
+        print('Error estimation of weighted residual took {}s'.format(
+            time.time() - time_l2_begin))
+
         if k:
+            rates_estim = np.log(
+                np.array(errs_estim[1:]) / np.array(errs_estim[:-1])) / np.log(
+                    np.array(dofs[1:]) / np.array(dofs[:-1]))
             rates_l2 = np.log(
                 np.array(errs_l2[1:]) / np.array(errs_l2[:-1])) / np.log(
                     np.array(dofs[1:]) / np.array(dofs[:-1]))
@@ -278,10 +326,12 @@ if __name__ == "__main__":
         else:
             rates_l2 = []
             rates_hierch = []
+            rates_estim = []
 
         print(
-            '\ndofs={}\nerrs_l2={}\nerr_hierch={}\n\nrates_l2={}\nrates_hierch={}\n------'
-            .format(dofs, errs_l2, errs_hierch, rates_l2, rates_hierch))
+            '\ndofs={}\nerrs_l2={}\nerr_hierch={}\nerr_estim={}\n\nrates_l2={}\nrates_hierch={}\nrates_estim={}\n------'
+            .format(dofs, errs_l2, errs_hierch, errs_estim, rates_l2,
+                    rates_hierch, rates_estim))
 
         print('Dorfler marking with theta = {}'.format(theta))
         s_idx = list(reversed(np.argsort(eta_sqr)))
