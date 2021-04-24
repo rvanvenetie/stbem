@@ -18,12 +18,13 @@ from parametrization import Circle, UnitSquare, LShape
 from quadrature import log_log_quadrature_scheme, log_quadrature_scheme, gauss_quadrature_scheme, ProductScheme2D, QuadScheme2D, QuadpyScheme2D
 import quadpy
 import hashlib
+from error_estimator import ErrorEstimator
 
 
 def SL_mat_col(j):
-    elem_trial = elems_glob[j]
-    col = np.zeros(len(elems_glob))
-    for i, elem_test in enumerate(elems_glob):
+    elem_trial = __elems_trial[j]
+    col = np.zeros(len(__elems_test))
+    for i, elem_test in enumerate(__elems_test):
         if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
             continue
         col[i] = SL.bilform(elem_trial, elem_test)
@@ -31,26 +32,30 @@ def SL_mat_col(j):
 
 
 def IP_rhs(j):
-    elem_test = elems_glob[j]
+    elem_test = __elems_test[j]
     return M0.linform(elem_test)[0]
 
 
-def SL_matrix(elems):
+def SL_matrix(elems_test, elems_trial):
     """ Evaluate the single layer matrix in parallel. """
-    global elems_glob
-    elems_glob = elems
-
-    N = len(elems)
-    md5 = hashlib.md5(str(elems).encode()).hexdigest()
-    cache_SL_fn = "{}/SL_dofs_{}_{}.npy".format('data', N, md5)
+    N = len(elems_test)
+    M = len(elems_trial)
+    md5 = hashlib.md5(
+        (str(elems_test) + str(elems_trial)).encode()).hexdigest()
+    cache_SL_fn = "{}/SL_{}x{}_{}.npy".format('data', N, M, md5)
     if os.path.isfile(cache_SL_fn):
         mat = np.load(cache_SL_fn)
         print("Loaded Single Layer from file {}".format(cache_SL_fn))
         return mat
 
     time_mat_begin = time.time()
-    mat = np.zeros((N, N))
-    for j, col in enumerate(mp.Pool(N_procs).imap(SL_mat_col, range(N))):
+    mat = np.zeros((N, M))
+
+    # Set up global variables for parallelizing.
+    global __elems_test, __elems_trial
+    __elems_test = elems_test
+    __elems_trial = elems_trial
+    for j, col in enumerate(mp.Pool(N_procs).imap(SL_mat_col, range(M))):
         mat[:, j] = col
 
     try:
@@ -65,9 +70,6 @@ def SL_matrix(elems):
 
 def RHS_vector(elems):
     """ Evaluate the initial potential vector in parallel. """
-    global elems_glob
-    elems_glob = elems
-
     N = len(elems)
     md5 = hashlib.md5(str(elems).encode()).hexdigest()
     cache_M0_fn = "{}/M0_dofs_{}_{}.npy".format('data', N, md5)
@@ -76,6 +78,8 @@ def RHS_vector(elems):
         return -np.load(cache_M0_fn)
 
     time_rhs_begin = time.time()
+    global __elems_test
+    __elems_test = elems
     M0_u0 = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
     np.save(cache_M0_fn, M0_u0)
     print('Calculating initial potential took {}s'.format(time.time() -
@@ -129,12 +133,9 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
     elems_fine = [child for children in elem_2_children for child in children]
     elem_2_idx_fine = {k: v for v, k in enumerate(elems_fine)}
 
-    # Prolongate Phi to fine mesh.
-    Phi_fine = Prolongate(Phi, elems_coarse, elems_fine)
-
-    # Evaluate SL matrix on the fine mesh.
-    mat = SL(elems_fine)
-    VPhi = mat @ Phi_fine
+    # Evaluate SL matrix tested with the fine mesh.
+    mat = SL(elems_fine, elems_coarse)
+    VPhi = mat @ Phi
 
     # Checking quadrature!
     #mat_coarse = SL(elems_coarse)
@@ -154,7 +155,7 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
     estim = np.zeros(len(elems_coarse))
     for i, elem_coarse in enumerate(elems_coarse):
         children = [elem_2_idx_fine[elem] for elem in elem_2_children[i]]
-        scaling = sum(mat[j, j] for j in children)
+        scaling = sum(mat[j, i] for j in children)
 
         Rhs_1, V_1 = 0, 0
         for j, c in zip(children, [1, 1, -1, -1]):
@@ -212,38 +213,9 @@ def M0u0(t, xy):
 
 def error_estim_l2(i):
     global elems_glob
-    global SL
-    global Phi
-    elem = elems_glob[i]
-
-    # Evaluate the residual.
-    def residual(tx):
-        result = np.zeros(tx.shape[1])
-        for i, (t, x_hat) in enumerate(zip(tx[0], tx[1])):
-            x = elem.gamma_space(x_hat)
-
-            # Evaluate the SL for our trial function.
-            VPhi = 0
-            for j, elem_trial in enumerate(elems_glob):
-                VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat, x)
-
-            # Compare with rhs.
-            result[i] = VPhi + M0u0(t, x)
-        return result
-
-    # Evaluate squared integral.
-    err_order = 5
-    gauss_2d = ProductScheme2D(gauss_quadrature_scheme(err_order))
-    t_a, x_a = elem.time_interval[0], elem.space_interval[0]
-    tx = np.array([
-        t_a + elem.h_t * gauss_2d.points[0],
-        x_a + elem.h_x * gauss_2d.points[1]
-    ])
-    res_sqr = np.asarray(residual(tx))**2
-    res_l2 = elem.h_x * elem.h_t * np.dot(res_sqr, gauss_2d.weights)
-
-    # Return the weighted l2 norm.
-    return (elem.h_x**(-1) + elem.h_t**(-1 / 2)) * res_l2
+    global error_estimator
+    global residual
+    return error_estimator.WeightedL2(elems_glob[i], residual)
 
 
 if __name__ == "__main__":
@@ -261,6 +233,8 @@ if __name__ == "__main__":
     errs_l2 = []
     errs_estim = []
     errs_hierch = []
+    error_estimator = ErrorEstimator(mesh)
+
     for k in range(100):
         elems = list(mesh.leaf_elements)
         N = len(mesh.leaf_elements)
@@ -272,7 +246,7 @@ if __name__ == "__main__":
         dofs.append(N)
 
         # Calculate SL matrix.
-        mat = SL_matrix(elems)
+        mat = SL_matrix(elems, elems)
 
         # Calculate initial potential.
         rhs = RHS_vector(elems)
@@ -304,6 +278,19 @@ if __name__ == "__main__":
             time.time() - time_hierarch_begin))
 
         # Calculate the weighted l2 error of the residual set global vars.
+        def residual(t, x_hat, x):
+            result = np.zeros(len(t))
+            for i, (t, x_hat, x) in enumerate(zip(t, x_hat, x.T)):
+                # Evaluate the SL for our trial function.
+                VPhi = 0
+                for j, elem_trial in enumerate(elems_glob):
+                    VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat,
+                                                 x.reshape(2, 1))
+
+                # Compare with rhs.
+                result[i] = VPhi + M0u0(t, x.reshape(2, 1))
+            return result
+
         time_l2_begin = time.time()
         elems_glob = elems
         err_estim_sqr = np.array(
