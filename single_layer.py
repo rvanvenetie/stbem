@@ -87,6 +87,7 @@ def double_time_integrated_kernel(a, b, c, d):
 class SingleLayerOperator:
     def __init__(self, mesh, quad_order=12):
         self.gauss_scheme = gauss_quadrature_scheme(23)
+        self.gauss_2d = ProductScheme2D(self.gauss_scheme)
         self.log_scheme = log_quadrature_scheme(quad_order, quad_order)
         self.log_scheme_m = self.log_scheme.mirror()
         self.log_log = ProductScheme2D(self.log_scheme, self.log_scheme)
@@ -96,6 +97,8 @@ class SingleLayerOperator:
 
     def __integrate(self, f, a, b, c, d):
         """ Integrates a symmetric singular f over the square [a,b]x[c,d]. """
+        h_x = b - a
+        h_y = d - c
         assert (a < b and c < d)
         assert (a, b) <= (c, d)
 
@@ -103,14 +106,36 @@ class SingleLayerOperator:
         if a == c and b == d:
             return self.duff_log_log.integrate(f, a, b, c, d)
 
-        # If the panels touch in the middle. TODO: Split into even parts?
+        # If the panels touch in the middle, split into even parts.
         if b == c:
-            return self.duff_log_log.mirror_x().integrate(f, a, b, c, d)
+            if abs(h_x - h_y) < 1e-10:
+                return self.duff_log_log.mirror_x().integrate(f, a, b, c, d)
+            elif h_x > h_y:
+                return self.duff_log_log.mirror_x().integrate(
+                    f, b - h_y, b, c, d) + self.__integrate(
+                        f, a, b - h_y, c, d)
+            else:
+                return self.duff_log_log.mirror_x().integrate(
+                    f, a, b, c, c + h_x) + self.__integrate(
+                        f, a, b, c + h_x, d)
+
+        # If the panels touch through in the glued boundary, split into even parts.
         if a == 0 and d == self.gamma_len and self.mesh.glue_space:
             assert b < c
-            return self.duff_log_log.mirror_y().integrate(f, a, b, c, d)
+            if abs(h_x - h_y) < 1e-10:
+                return self.duff_log_log.mirror_y().integrate(f, a, b, c, d)
+            elif h_x > h_y:
+                return self.duff_log_log.mirror_y().integrate(
+                    f, a, a + h_y, c, d) + self.__integrate(
+                        f, a + h_y, b, c, d)
+            else:
+                return self.__integrate(
+                    f, a, b, c,
+                    d - h_x) + self.duff_log_log.mirror_y().integrate(
+                        f, a, b, d - h_x, d)
 
         # If we are disjoint.  TODO: Do more singular stuff if close?
+        # TODO: Gauss 2d for disjoint..
         if b < c:
             if c - b < self.gamma_len - d + a or not self.mesh.glue_space:
                 return self.log_log.mirror_x().integrate(f, a, b, c, d)
@@ -119,6 +144,7 @@ class SingleLayerOperator:
 
         # If the first panel is longer than the second panel.
         if d < b:
+            # TODO: Is this correct?
             return self.__integrate(
                 f, a, d, c, d) + self.duff_log_log.mirror_y().integrate(
                     f, d, b, c, d)
@@ -277,10 +303,28 @@ class SingleLayerOperator:
 
 
 if __name__ == "__main__":
-    mesh = MeshParametrized(Circle())
+    mesh = MeshParametrized(UnitSquare())
     SL = SingleLayerOperator(mesh)
-    elems = list(mesh.leaf_elements)
-    print(SL.evaluate(elems[0], 1, 0))
+    elems_coarse = list(mesh.leaf_elements)
+    mesh.uniform_refine()
+    #mesh.uniform_refine()
+    elems_fine = list(mesh.leaf_elements)
+    #val = 0.00198744739918612727756193617162
+    #val = 0.00824947094692018596379322398796
+    #val = 0.00532060688216484664801741125812
+    #val = 0.0158119046824144133115757205122
+    val = 0.00639484934683936137415465919497
+    val = 0.0197337361580657417645813083898
+    for i, elem_test in enumerate(elems_fine):
+        for j, elem_trial in enumerate(elems_coarse):
+            if elem_test.time_interval == (
+                    0., 0.5) and elem_test.space_interval == (
+                        0.5, 1.) and elem_trial.space_interval == (1., 2.):
+                val_approx = SL.bilform(elem_trial, elem_test)
+
+    print(val_approx)
+    print(abs(val - val_approx) / val)
+    #print(SL.evaluate(elems[0], 1, 0))
 
     adfa
     for gamma in [Circle(), UnitSquare(), LShape()]:

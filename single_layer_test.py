@@ -149,6 +149,63 @@ def test_single_layer_pw_polygon_overlap():
                 else: assert val == approx(val_exact, abs=0, rel=1e-9)
 
 
+def test_single_layer_pw_polygon_overlap_bla():
+    for gamma in [UnitSquare(), LShape(), UnitInterval()]:
+        mesh = MeshParametrized(gamma)
+
+        # Randomly refine this mesh.
+        random.seed(5)
+        for _ in range(200):
+            elem = random.choice(list(mesh.leaf_elements))
+            mesh.refine_axis(elem, random.random() < 0.5)
+
+        # We can exactly integrate the kernel if the space part coincides.
+        SL = SingleLayerOperator(mesh)
+        elems = list(mesh.leaf_elements)
+        for i, elem_test in enumerate(elems):
+            for j, elem_trial in enumerate(elems):
+                if elem_test.gamma_space != elem_trial.gamma_space: continue
+                if elem_test.space_interval[0] > elem_trial.space_interval[
+                        0] or elem_test.space_interval[
+                            1] < elem_trial.space_interval[1]:
+                    continue
+
+                assert (
+                    elem_test.space_interval[0] <= elem_trial.space_interval[0]
+                    and elem_test.space_interval[1] >=
+                    elem_trial.space_interval[1])
+
+                val_exact = 0
+                # Evaluate the before part.
+                if elem_test.space_interval[0] < elem_trial.space_interval[0]:
+                    x_a, x_b = elem_test.space_interval[
+                        0], elem_trial.space_interval[0]
+                    y_a, y_b = elem_trial.space_interval
+                    val_exact = spacetime_integrated_kernel_2(
+                        *elem_test.time_interval, *elem_trial.time_interval,
+                        x_b - x_a, y_b - y_a)
+
+                # Evaluate the overlap part.
+                if (elem_trial.space_interval[0], elem_test.space_interval[1]
+                    ) == elem_trial.space_interval:
+                    val_exact += spacetime_integrated_kernel_1(
+                        *elem_test.time_interval, *elem_trial.time_interval,
+                        elem_trial.space_interval[1] -
+                        elem_trial.space_interval[0])
+                else:
+                    val_exact += spacetime_integrated_kernel_3(
+                        *elem_test.time_interval, *elem_trial.time_interval,
+                        elem_test.space_interval[1] -
+                        elem_trial.space_interval[0],
+                        elem_trial.space_interval[1] -
+                        elem_trial.space_interval[0])
+
+                val = SL.bilform(elem_trial, elem_test)
+
+                if val_exact == 0: assert val == 0
+                else: assert val == approx(val_exact, abs=0, rel=1e-8)
+
+
 def test_single_layer_pw_polygon_touch():
     for gamma in [UnitSquare(), LShape(), UnitInterval()]:
         mesh = MeshParametrized(gamma)
@@ -472,3 +529,18 @@ def test_rhs():
         f_param = lambda x: f_int(elem_test.gamma_space(x))
         rhs[i] = gauss_scheme.integrate(f_param, *elem_test.space_interval)
     assert rhs[0] == approx(0.23307837618931861567)
+
+
+def test_single_layer_evaluate_disj():
+    gamma = UnitSquare()
+    mesh_trial = MeshParametrized(gamma)
+    mesh_coarse = MeshParametrized(gamma)
+
+    # Randomly refine the meshes
+    random.seed(5)
+    for _ in range(500):
+        elem_trial = random.choice(list(mesh_trial.leaf_elements))
+        mesh_trial.refine_axis(elem_trial, random.random() < 0.5)
+
+        elem_test = random.choice(list(mesh_test.leaf_elements))
+        mesh_test.refine_axis(elem_test, random.random() < 0.5)
