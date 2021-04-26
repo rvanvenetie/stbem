@@ -201,3 +201,35 @@ def test_initial_potential_evaluate():
     assert M0.evaluate(0.001, x) == approx(0.198013791933202148280141026357,
                                            abs=0,
                                            rel=1e-8)
+
+
+def test_initial_potential_refine():
+    gamma = UnitSquare()
+    mesh = MeshParametrized(gamma)
+    M0 = InitialOperator(
+        bdr_mesh=mesh,
+        u0=lambda xy: np.sin(np.pi * xy[0]) * np.sin(np.pi * xy[1]),
+        initial_mesh=UnitSquareBoundaryRefined)
+
+    # Randomly refine the meshes
+    random.seed(5)
+    for _ in range(100):
+        elem = random.choice([
+            elem for elem in mesh.leaf_elements if elem.time_interval[0] == 0.
+        ])
+        mesh.refine_axis(elem, random.random() < 0.5)
+
+    elems = list(mesh.leaf_elements)
+    mesh.uniform_refine()
+
+    for elem in elems:
+        elems_children = [
+            child for child_time in elem.children
+            for child in child_time.children
+        ]
+        val_refined = 0
+        for elem_child in elems_children:
+            val_refined += M0.linform(elem_child)[0]
+
+        val = M0.linform(elem)[0]
+        assert val == approx(val_refined, abs=0, rel=1e-10)

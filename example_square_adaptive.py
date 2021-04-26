@@ -1,6 +1,6 @@
 import numpy as np
 from copy import deepcopy
-from mesh import Vertex
+from mesh import Vertex, Element
 import multiprocessing as mp
 import os
 from mesh import Prolongate
@@ -22,6 +22,7 @@ from error_estimator import ErrorEstimator
 
 
 def SL_mat_col(j):
+    global SL
     elem_trial = __elems_trial[j]
     col = np.zeros(len(__elems_test))
     for i, elem_test in enumerate(__elems_test):
@@ -40,6 +41,15 @@ def SL_matrix(elems_test, elems_trial):
     """ Evaluate the single layer matrix in parallel. """
     N = len(elems_test)
     M = len(elems_trial)
+
+    # For small N, M, simply do it inline.
+    if N < 5 and M < 5:
+        mat = np.zeros((N, M))
+        for i, elem_test in enumerate(elems_test):
+            for j, elem_trial in enumerate(elems_trial):
+                mat[i, j] = SL.bilform(elem_trial, elem_test)
+        return mat
+
     md5 = hashlib.md5(
         (str(elems_test) + str(elems_trial)).encode()).hexdigest()
     cache_SL_fn = "{}/SL_{}x{}_{}.npy".format('data', N, M, md5)
@@ -138,43 +148,40 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
     VPhi = mat @ Phi
 
     # Checking quadrature!
-    #mat_coarse = SL(elems_coarse)
+    #mat_coarse = SL(elems_coarse, elems_coarse)
+    #print("Shape of mat_coarse is {}".format(mat_coarse.shape))
     #for i, elem_test in enumerate(elems_coarse):
     #    for j, elem_trial in enumerate(elems_coarse):
     #        val_fine = 0
     #        for child_test in elem_2_children[i]:
     #            k = elem_2_idx_fine[child_test]
-    #            for child_trial in elem_2_children[j]:
-    #                h = elem_2_idx_fine[child_trial]
-    #                val_fine += mat[k, h]
-    #        assert mat_coarse[i, j] == approx(val_fine, abs=0, rel=1e-8)
+    #            val_fine += mat[k, j]
+    #            #print('\t', elem_trial, child_test, mat[k, j])
+    #        #print(elem_trial, elem_test,
+    #        #      abs((mat_coarse[i, j] - val_fine) / val_fine))
+    #        assert mat_coarse[i, j] == approx(val_fine, abs=0, rel=1e-10)
 
     # Evaluate the RHS on the fine mesh.
     rhs = RHS(elems_fine)
 
     estim = np.zeros(len(elems_coarse))
     for i, elem_coarse in enumerate(elems_coarse):
+        S = SL(elem_2_children[i], elem_2_children[i])
         children = [elem_2_idx_fine[elem] for elem in elem_2_children[i]]
-        scaling = sum(mat[j, i] for j in children)
+        #scaling = sum(mat[j, i] for j in children)
 
-        Rhs_1, V_1 = 0, 0
-        for j, c in zip(children, [1, 1, -1, -1]):
-            Rhs_1 += rhs[j] * c
-            V_1 += VPhi[j] * c
-        estim_1 = abs(Rhs_1 - V_1)**2 / scaling
-
-        Rhs_2, V_2 = 0, 0
-        for j, c in zip(children, [1, -1, 1, -1]):
-            Rhs_2 += rhs[j] * c
-            V_2 += VPhi[j] * c
-        estim_2 = abs(Rhs_2 - V_2)**2 / scaling
-
-        Rhs_3, V_3 = 0, 0
-        for j, c in zip(children, [1, -1, -1, 1]):
-            Rhs_3 += rhs[j] * c
-            V_3 += VPhi[j] * c
-        estim_3 = abs(Rhs_3 - V_3)**2 / scaling
-        estim[i] = estim_1 + estim_2 + estim_3
+        estim_loc = np.zeros(3)
+        for k, coefs in enumerate([[1, 1, -1, -1], [1, -1, 1, -1],
+                                   [1, -1, -1, 1]]):
+            rhs_estim = 0
+            V_estim = 0
+            for j, c in zip(children, coefs):
+                rhs_estim += rhs[j] * c
+                V_estim += VPhi[j] * c
+            coefs = np.array(coefs)
+            scaling_estim = coefs @ (S @ coefs.T)
+            estim_loc[k] = abs(rhs_estim - V_estim)**2 / scaling_estim
+        estim[i] = np.sum(estim_loc)
 
     return np.sqrt(np.sum(estim)), estim
 

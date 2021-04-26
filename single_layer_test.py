@@ -531,16 +531,53 @@ def test_rhs():
     assert rhs[0] == approx(0.23307837618931861567)
 
 
-def test_single_layer_evaluate_disj():
+def test_single_layer_refine():
     gamma = UnitSquare()
     mesh_trial = MeshParametrized(gamma)
-    mesh_coarse = MeshParametrized(gamma)
+    mesh_test = MeshParametrized(gamma)
+    SL = SingleLayerOperator(mesh_trial)
 
     # Randomly refine the meshes
     random.seed(5)
-    for _ in range(500):
+    for _ in range(200):
         elem_trial = random.choice(list(mesh_trial.leaf_elements))
+        #elem_trial = random.choice([
+        #    elem for elem in mesh_trial.leaf_elements
+        #    if elem.time_interval[0] == 0. or elem.space_interval[0] == 0.
+        #])
         mesh_trial.refine_axis(elem_trial, random.random() < 0.5)
 
         elem_test = random.choice(list(mesh_test.leaf_elements))
         mesh_test.refine_axis(elem_test, random.random() < 0.5)
+
+    elems_trial = list(mesh_trial.leaf_elements)
+    elems_test = list(mesh_test.leaf_elements)
+
+    mesh_trial.uniform_refine()
+    mesh_test.uniform_refine()
+
+    print(len(elems_trial))
+
+    for elem_test in elems_trial:
+        elems_test_children = [
+            child for child_time in elem_test.children
+            for child in child_time.children
+        ]
+        for elem_trial in elems_trial:
+            elems_trial_children = [
+                child for child_time in elem_trial.children
+                for child in child_time.children
+            ]
+            val_refined = 0
+            for elem_test_child in elems_test_children:
+                for elem_trial_child in elems_trial_children:
+                    val_refined += SL.bilform(elem_trial_child,
+                                              elem_test_child)
+
+            val = SL.bilform(elem_trial, elem_test)
+            if val_refined != 0:
+                err = abs((val - val_refined) / val_refined)
+                if err > 1e-10 and val > 1e-35:
+                    print(elem_trial, elem_test, err, val, val_refined)
+
+            assert val == approx(val_refined, abs=1e-50, rel=1e-10)

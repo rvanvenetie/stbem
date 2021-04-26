@@ -137,6 +137,7 @@ class SingleLayerOperator:
         # If we are disjoint.  TODO: Do more singular stuff if close?
         # TODO: Gauss 2d for disjoint..
         if b < c:
+            #return self.gauss_2d.integrate(f, a, b, c, d)
             if c - b < self.gamma_len - d + a or not self.mesh.glue_space:
                 return self.log_log.mirror_x().integrate(f, a, b, c, d)
             else:

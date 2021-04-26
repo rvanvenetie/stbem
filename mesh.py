@@ -313,9 +313,15 @@ class Mesh:
         return result
 
     def uniform_refine(self):
-        leaves = list(self.leaf_elements)
+        leaves = sorted(list(self.leaf_elements),
+                        key=lambda elem: elem.level_time)
         for elem in leaves:
-            self.refine(elem)
+            self.refine_time(elem)
+
+        leaves = sorted(list(self.leaf_elements),
+                        key=lambda elem: elem.level_space)
+        for elem in leaves:
+            self.refine_space(elem)
 
     def uniform_refine_space(self):
         leaves = list(self.leaf_elements)
