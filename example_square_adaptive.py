@@ -33,8 +33,7 @@ def SL_mat_col(j):
 
 
 def IP_rhs(j):
-    elem_test = __elems_test[j]
-    return M0.linform(elem_test)[0]
+    return __M0.linform(__elems_test[j])[0]
 
 
 def SL_matrix(elems_test, elems_trial):
@@ -83,14 +82,24 @@ def RHS_vector(elems):
     N = len(elems)
     md5 = hashlib.md5(str(elems).encode()).hexdigest()
     cache_M0_fn = "{}/M0_dofs_{}_{}.npy".format('data', N, md5)
-    if os.path.isfile(cache_M0_fn):
-        print("Loaded Initial Operator from file {}".format(cache_M0_fn))
-        return -np.load(cache_M0_fn)
+    #if os.path.isfile(cache_M0_fn):
+    #    print("Loaded Initial Operator from file {}".format(cache_M0_fn))
+    #    return -np.load(cache_M0_fn)
 
     time_rhs_begin = time.time()
     global __elems_test
+    global __M0
     __elems_test = elems
+    __M0 = M0
     M0_u0 = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
+    __M0 = M0_coarse
+    M0_u0_coarse = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
+    err = np.abs((M0_u0 - M0_u0_coarse) / M0_u0)
+    print('')
+    print('Max rel error', np.max(err), 'for', elems[np.argmax(err)])
+    print('Min rel error', np.min(err), 'for', elems[np.argmin(err)])
+    print('')
+
     np.save(cache_M0_fn, M0_u0)
     print('Calculating initial potential took {}s'.format(time.time() -
                                                           time_rhs_begin))
@@ -145,6 +154,7 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
 
     # Evaluate SL matrix tested with the fine mesh.
     mat = SL(elems_fine, elems_coarse)
+    # TEST THIS MATRIX WITH SMALLER QUADRATURE.
     VPhi = mat @ Phi
 
     # Checking quadrature!
@@ -163,6 +173,7 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
 
     # Evaluate the RHS on the fine mesh.
     rhs = RHS(elems_fine)
+    # TEST THIS VECTOR WITH SMALLER QUADRATURE.
 
     estim = np.zeros(len(elems_coarse))
     for i, elem_coarse in enumerate(elems_coarse):
@@ -222,7 +233,8 @@ def error_estim_l2(i):
     global elems_glob
     global error_estimator
     global residual
-    return error_estimator.WeightedL2(elems_glob[i], residual)
+    return 0
+    #return error_estimator.WeightedL2(elems_glob[i], residual)
 
 
 if __name__ == "__main__":
@@ -235,6 +247,10 @@ if __name__ == "__main__":
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
                          initial_mesh=UnitSquareBoundaryRefined)
+    M0_coarse = InitialOperator(bdr_mesh=mesh,
+                                u0=u0,
+                                initial_mesh=UnitSquareBoundaryRefined,
+                                quad_int=4)
 
     dofs = []
     errs_l2 = []
@@ -286,6 +302,7 @@ if __name__ == "__main__":
 
         # Calculate the weighted l2 error of the residual set global vars.
         def residual(t, x_hat, x):
+            assert t.shape == x_hat.shape
             result = np.zeros(len(t))
             for i, (t, x_hat, x) in enumerate(zip(t, x_hat, x.T)):
                 # Evaluate the SL for our trial function.
