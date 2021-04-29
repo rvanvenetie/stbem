@@ -111,9 +111,11 @@ class SingleLayerOperator:
         self.duff_log_log = DuffyScheme2D(self.log_log, symmetric=False)
         self.mesh = mesh
         self.gamma_len = self.mesh.gamma_space.gamma_length
+        self._init_elems()
 
+    def _init_elems(self):
         # For all elements in the mesh, register the log scheme.
-        for elem in mesh.leaf_elements:
+        for elem in self.mesh.leaf_elements:
             a, b = elem.space_interval
             elem.__log_scheme_y = elem.gamma_space(a + (b - a) *
                                                    self.log_scheme.points)

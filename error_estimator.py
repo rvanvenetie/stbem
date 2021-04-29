@@ -1,4 +1,6 @@
 import random
+import multiprocessing as mp
+import time
 import math
 import numpy as np
 from quadrature import gauss_quadrature_scheme, DuffyScheme2D, ProductScheme2D, gauss_sqrtinv_quadrature_scheme
@@ -6,6 +8,16 @@ from pprint import pprint
 from mesh import MeshParametrized
 from parametrization import UnitSquare
 from norms import Slobodeckij
+
+
+def MP_estim_l2(i):
+    global __elems, __error_estimator, __residual
+    return __error_estimator.weighted_l2(__elems[i], __residual)
+
+
+def MP_estim_sobolev(i):
+    global __elems, __error_estimator, __residual
+    return __error_estimator.sobolev(__elems[i], __residual)
 
 
 class ErrorEstimator:
@@ -59,7 +71,7 @@ class ErrorEstimator:
         approx = h_x * np.dot(val, self.gauss.weights)
         return approx
 
-    def Sobolev_space(self, elem, residual):
+    def sobolev_space(self, elem, residual):
         """ This calculates the sobolev space error estimator.
             
         That is, for every neighbour along a time axis, we evaluate
@@ -98,7 +110,7 @@ class ErrorEstimator:
                                                elem_right)))
         return math.fsum([val for elem, val in ips]), ips
 
-    def Sobolev_time(self, elem, residual):
+    def sobolev_time(self, elem, residual):
         """ This calculates the sobolev time error estimator. 
 
             That is, for every neighbour along a space axis, we evaluate
@@ -125,7 +137,7 @@ class ErrorEstimator:
                                                elem.gamma_space)))
         return math.fsum([val for elem, val in ips]), ips
 
-    def WeightedL2(self, elem, residual):
+    def weighted_l2(self, elem, residual):
         """ Residual takes arguments t, x_hat, x. """
         # Evaluate squared integral.
         t_a, x_a = elem.time_interval[0], elem.space_interval[0]
@@ -137,11 +149,43 @@ class ErrorEstimator:
         res_l2 = elem.h_x * elem.h_t * np.dot(res_sqr, self.gauss_2d.weights)
 
         # Return the weighted l2 norm.
-        return (elem.h_x**(-1) + elem.h_t**(-1 / 2)) * res_l2
+        return elem.h_t**(-1 / 2) * res_l2, elem.h_x**(-1) * res_l2
 
-    def Sobolev(self, elem, residual):
-        return self.Sobolev_time(elem, residual)[0] + self.Sobolev_space(
+    def sobolev(self, elem, residual):
+        return self.sobolev_time(elem, residual)[0], self.sobolev_space(
             elem, residual)[0]
+
+    def estimate(self, elems, Phi, SL, M0u0, use_mp=False):
+        """ Returns the error estimator for given function Phi. """
+        SL._init_elems()
+
+        def residual(t, x_hat, x):
+            assert len(t) == len(x_hat) == x.shape[1]
+            result = np.zeros(len(t))
+            for i, (t, x_hat, x) in enumerate(zip(t, x_hat, x.T)):
+                # Evaluate the SL for our trial function.
+                VPhi = 0
+                for j, elem_trial in enumerate(elems):
+                    VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat,
+                                                 x.reshape(2, 1))
+
+                # Compare with rhs.
+                result[i] = VPhi + M0u0(t, x.reshape(2, 1))
+            return result
+
+        N = len(elems)
+        if not use_mp:
+            weighted_l2 = [self.weighted_l2(elem, residual) for elem in elems]
+            sobolev = [self.sobolev(elem, residual) for elem in elems]
+        else:
+            globals()['__residual'] = residual
+            globals()['__elems'] = elems
+            globals()['__error_estimator'] = self
+            cpu = mp.cpu_count()
+            weighted_l2 = list(mp.Pool(cpu).map(MP_estim_l2, range(N), 10))
+            sobolev = list(mp.Pool(cpu).map(MP_estim_sobolev, range(N), 10))
+
+        return np.sum(weighted_l2, axis=1), np.sum(sobolev, axis=1)
 
 
 if __name__ == "__main__":

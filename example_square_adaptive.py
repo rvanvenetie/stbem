@@ -19,99 +19,7 @@ from quadrature import log_log_quadrature_scheme, log_quadrature_scheme, gauss_q
 import quadpy
 import hashlib
 from error_estimator import ErrorEstimator
-
-
-class DummyElement:
-    """ Needed for calculation of the Hierarchical Error Estimator. """
-    def __init__(self, vertices, parent):
-        self.vertices = vertices
-        self.parent = parent
-        self.gamma_space = parent.gamma_space
-
-        self.time_interval = float(self.vertices[0].t), float(
-            self.vertices[2].t)
-        self.space_interval = float(self.vertices[0].x), float(
-            self.vertices[2].x)
-        self.h_t = float(abs(self.vertices[2].t - self.vertices[0].t))
-        self.h_x = float(abs(self.vertices[2].x - self.vertices[0].x))
-
-    def __repr__(self):
-        return "Elem(t={}, x={})".format(self.time_interval,
-                                         self.space_interval)
-
-
-def HierarchicalErrorEstimator(Phi, elems_coarse):
-    """ Returns the hierarchical basis estimator for given function. """
-
-    # Calcualte uniform refinement of the mesh.
-    elem_2_children = []
-    for elem_coarse in elems_coarse:
-        v0, v1, v2, v3 = elem_coarse.vertices
-        v01 = Vertex(t=(v0.t + v1.t) / 2, x=(v0.x + v1.x) / 2, idx=-1)
-        v12 = Vertex(t=(v1.t + v2.t) / 2, x=(v1.x + v2.x) / 2, idx=-1)
-        v23 = Vertex(t=(v2.t + v3.t) / 2, x=(v2.x + v3.x) / 2, idx=-1)
-        v30 = Vertex(t=(v3.t + v0.t) / 2, x=(v3.x + v0.x) / 2, idx=-1)
-        vi = Vertex(t=(v0.t + v2.t) / 2, x=(v0.x + v2.x) / 2, idx=-1)
-
-        children = [
-            DummyElement(vertices=[v0, v01, vi, v30], parent=elem_coarse),
-            DummyElement(vertices=[v01, v1, v12, vi], parent=elem_coarse),
-            DummyElement(vertices=[v30, vi, v23, v3], parent=elem_coarse),
-            DummyElement(vertices=[vi, v12, v2, v23], parent=elem_coarse),
-        ]
-
-        elem_2_children.append(children)
-
-    # Flatten list and calculate mapping of indices.
-    elems_fine = [child for children in elem_2_children for child in children]
-    elem_2_idx_fine = {k: v for v, k in enumerate(elems_fine)}
-
-    # Evaluate SL matrix tested with the fine mesh.
-    mat = SL.bilform_matrix(elems_test=elems_fine,
-                            elems_trial=elems_coarse,
-                            cache_dir='data',
-                            use_mp=True)
-    # TEST THIS MATRIX WITH SMALLER QUADRATURE.
-    VPhi = mat @ Phi
-
-    # Checking quadrature!
-    #mat_coarse = SL(elems_coarse, elems_coarse)
-    #print("Shape of mat_coarse is {}".format(mat_coarse.shape))
-    #for i, elem_test in enumerate(elems_coarse):
-    #    for j, elem_trial in enumerate(elems_coarse):
-    #        val_fine = 0
-    #        for child_test in elem_2_children[i]:
-    #            k = elem_2_idx_fine[child_test]
-    #            val_fine += mat[k, j]
-    #            #print('\t', elem_trial, child_test, mat[k, j])
-    #        #print(elem_trial, elem_test,
-    #        #      abs((mat_coarse[i, j] - val_fine) / val_fine))
-    #        assert mat_coarse[i, j] == approx(val_fine, abs=0, rel=1e-10)
-
-    # Evaluate the RHS on the fine mesh.
-    rhs = -M0.linform_vector(elems=elems_fine, cache_dir='data', use_mp=True)
-    # TEST THIS VECTOR WITH SMALLER QUADRATURE.
-
-    estim = np.zeros(len(elems_coarse))
-    for i, elem_coarse in enumerate(elems_coarse):
-        S = SL.bilform_matrix(elem_2_children[i], elem_2_children[i])
-        children = [elem_2_idx_fine[elem] for elem in elem_2_children[i]]
-        #scaling = sum(mat[j, i] for j in children)
-
-        estim_loc = np.zeros(3)
-        for k, coefs in enumerate([[1, 1, -1, -1], [1, -1, 1, -1],
-                                   [1, -1, -1, 1]]):
-            rhs_estim = 0
-            V_estim = 0
-            for j, c in zip(children, coefs):
-                rhs_estim += rhs[j] * c
-                V_estim += VPhi[j] * c
-            coefs = np.array(coefs)
-            scaling_estim = coefs @ (S @ coefs.T)
-            estim_loc[k] = abs(rhs_estim - V_estim)**2 / scaling_estim
-        estim[i] = np.sum(estim_loc)
-
-    return np.sqrt(np.sum(estim)), estim
+from hierarchical_error_estimator import HierarchicalErrorEstimator
 
 
 def u(t, xy):
@@ -146,20 +54,6 @@ def M0u0(t, xy):
             np.exp(1j * np.pi * (x + y - 2 * 1j * pit))).real
 
 
-def error_estim_l2(i):
-    global elems_glob
-    global error_estimator
-    global residual
-    return error_estimator.WeightedL2(elems_glob[i], residual)
-
-
-def error_estim_slo(i):
-    global elems_glob
-    global error_estimator
-    global residual
-    return error_estimator.Sobolev(elems_glob[i], residual)
-
-
 if __name__ == "__main__":
     N_procs = mp.cpu_count()
     mp.set_start_method('fork')
@@ -178,6 +72,7 @@ if __name__ == "__main__":
     errs_slo = []
     errs_hierch = []
     error_estimator = ErrorEstimator(mesh, N_poly=7)
+    hierarch_error_estimator = HierarchicalErrorEstimator(SL=SL, M0=M0)
 
     for k in range(100):
         elems = list(mesh.leaf_elements)
@@ -214,43 +109,21 @@ if __name__ == "__main__":
 
         # Do the hierarhical error estimator.
         time_hierarch_begin = time.time()
-        err_tot, eta_sqr = HierarchicalErrorEstimator(Phi, elems)
+        err_tot, eta_sqr = hierarch_error_estimator.estimate(elems, Phi)
         errs_hierch.append(err_tot)
         print('Hierarchical error estimator took {}s'.format(
             time.time() - time_hierarch_begin))
 
         # Calculate the weighted l2 error of the residual set global vars.
-        SL = SingleLayerOperator(mesh)
-
-        def residual(t, x_hat, x):
-            assert len(t) == len(x_hat) == x.shape[1]
-            result = np.zeros(len(t))
-            for i, (t, x_hat, x) in enumerate(zip(t, x_hat, x.T)):
-                # Evaluate the SL for our trial function.
-                VPhi = 0
-                for j, elem_trial in enumerate(elems_glob):
-                    VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat,
-                                                 x.reshape(2, 1))
-
-                # Compare with rhs.
-                result[i] = VPhi + M0u0(t, x.reshape(2, 1))
-            return result
-
-        time_l2_begin = time.time()
-        elems_glob = elems
-        err_estim_sqr = np.array(
-            mp.Pool(N_procs).map(error_estim_l2, range(N), 10))
+        time_begin = time.time()
+        err_estim_sqr, err_slo_sqr = error_estimator.estimate(elems,
+                                                              Phi,
+                                                              SL,
+                                                              M0u0,
+                                                              use_mp=True)
         errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
-        print('Error estimation of weighted residual took {}s'.format(
-            time.time() - time_l2_begin))
-
-        time_slo_begin = time.time()
-        elems_glob = elems
-        err_slo_sqr = np.array(
-            mp.Pool(N_procs).map(error_estim_slo, range(N), 10))
         errs_slo.append(np.sqrt(np.sum(err_slo_sqr)))
-        print('Error estimation of Slobodeckij norm took {}s'.format(
-            time.time() - time_slo_begin))
+        print('Error estimation took {}s'.format(time.time() - time_begin))
 
         if k:
             rates_estim = np.log(
