@@ -90,7 +90,7 @@ def double_time_integrated_kernel(a, b, c, d):
 
 
 def MP_SL_matrix_col(j):
-    """ Function for the multiprocessing library. """
+    """ Function to evaluate SL in parallel using the multiprocessing library. """
     global __SL, __elems_test, __elems_trial
     elem_trial = __elems_trial[j]
     col = np.zeros(len(__elems_test))

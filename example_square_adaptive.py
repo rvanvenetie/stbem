@@ -21,49 +21,6 @@ import hashlib
 from error_estimator import ErrorEstimator
 
 
-def SL_mat_col(j):
-    elem_trial = __elems_trial[j]
-    col = np.zeros(len(__elems_test))
-    for i, elem_test in enumerate(__elems_test):
-        if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
-            continue
-        col[i] = __SL.bilform(elem_trial, elem_test)
-    return col
-
-
-def IP_rhs(j):
-    return __M0.linform(__elems_test[j])[0]
-
-
-def RHS_vector(elems):
-    """ Evaluate the initial potential vector in parallel. """
-    N = len(elems)
-    md5 = hashlib.md5(str(elems).encode()).hexdigest()
-    cache_M0_fn = "{}/M0_dofs_{}_{}.npy".format('data', N, md5)
-    if os.path.isfile(cache_M0_fn):
-        print("Loaded Initial Operator from file {}".format(cache_M0_fn))
-        return -np.load(cache_M0_fn)
-
-    time_rhs_begin = time.time()
-    global __elems_test, __M0
-    __elems_test = elems
-    __M0 = M0
-    M0_u0 = np.array(mp.Pool(N_procs).map(IP_rhs, range(N), 10))
-    #__M0 = M0_coarse
-    #M0_u0_coarse = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
-    #err = np.abs((M0_u0 - M0_u0_coarse) / M0_u0)
-    #print('---')
-    #print('IP Max rel error', np.max(err), 'for', elems[np.argmax(err)])
-    #print('IP Min rel error', np.min(err), 'for', elems[np.argmin(err)])
-    #print('---')
-
-    np.save(cache_M0_fn, M0_u0)
-    print('Calculating initial potential took {}s'.format(time.time() -
-                                                          time_rhs_begin))
-    print("Stored Initial Operator to {}".format(cache_M0_fn))
-    return -M0_u0
-
-
 class DummyElement:
     """ Needed for calculation of the Hierarchical Error Estimator. """
     def __init__(self, vertices, parent):
@@ -83,7 +40,7 @@ class DummyElement:
                                          self.space_interval)
 
 
-def HierarchicalErrorEstimator(Phi, elems_coarse, RHS):
+def HierarchicalErrorEstimator(Phi, elems_coarse):
     """ Returns the hierarchical basis estimator for given function. """
 
     # Calcualte uniform refinement of the mesh.
@@ -132,7 +89,7 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, RHS):
     #        assert mat_coarse[i, j] == approx(val_fine, abs=0, rel=1e-10)
 
     # Evaluate the RHS on the fine mesh.
-    rhs = RHS(elems_fine)
+    rhs = -M0.linform_vector(elems=elems_fine, cache_dir='data', use_mp=True)
     # TEST THIS VECTOR WITH SMALLER QUADRATURE.
 
     estim = np.zeros(len(elems_coarse))
@@ -235,7 +192,7 @@ if __name__ == "__main__":
         mat = SL.bilform_matrix(elems, elems, cache_dir='data', use_mp=True)
 
         # Calculate initial potential.
-        rhs = RHS_vector(elems)
+        rhs = -M0.linform_vector(elems=elems, cache_dir='data', use_mp=True)
 
         # Solve.
         time_solve_begin = time.time()
@@ -257,7 +214,7 @@ if __name__ == "__main__":
 
         # Do the hierarhical error estimator.
         time_hierarch_begin = time.time()
-        err_tot, eta_sqr = HierarchicalErrorEstimator(Phi, elems, RHS_vector)
+        err_tot, eta_sqr = HierarchicalErrorEstimator(Phi, elems)
         errs_hierch.append(err_tot)
         print('Hierarchical error estimator took {}s'.format(
             time.time() - time_hierarch_begin))
