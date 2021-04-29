@@ -51,10 +51,10 @@ def SL_matrix(elems_test, elems_trial):
     md5 = hashlib.md5(
         (str(elems_test) + str(elems_trial)).encode()).hexdigest()
     cache_SL_fn = "{}/SL_{}x{}_{}.npy".format('data', N, M, md5)
-    #if os.path.isfile(cache_SL_fn):
-    #    mat = np.load(cache_SL_fn)
-    #    print("Loaded Single Layer from file {}".format(cache_SL_fn))
-    #    return mat
+    if os.path.isfile(cache_SL_fn):
+        mat = np.load(cache_SL_fn)
+        print("Loaded Single Layer from file {}".format(cache_SL_fn))
+        return mat
 
     time_mat_begin = time.time()
     mat = np.zeros((N, M))
@@ -68,18 +68,18 @@ def SL_matrix(elems_test, elems_trial):
     for j, col in enumerate(mp.Pool(N_procs).imap(SL_mat_col, range(M))):
         mat[:, j] = col
 
-    mat_coarse = np.zeros((N, M))
-    __SL = SL_coarse
-    for j, col in enumerate(mp.Pool(N_procs).imap(SL_mat_col, range(M))):
-        mat_coarse[:, j] = col
+    #mat_coarse = np.zeros((N, M))
+    #__SL = SL_coarse
+    #for j, col in enumerate(mp.Pool(N_procs).imap(SL_mat_col, range(M))):
+    #    mat_coarse[:, j] = col
 
-    err = np.abs((mat - mat_coarse) / mat)
-    max_ij = np.unravel_index(np.nanargmax(err), err.shape)
-    print('---')
-    print('SL Max rel error', np.nanmax(err), 'for', elems_test[max_ij[0]],
-          ' vs ', elems_trial[max_ij[1]])
-    print('SL Min rel error', np.nanmin(err))
-    print('---')
+    #err = np.abs((mat - mat_coarse) / mat)
+    #max_ij = np.unravel_index(np.nanargmax(err), err.shape)
+    #print('---')
+    #print('SL Max rel error', np.nanmax(err), 'for', elems_test[max_ij[0]],
+    #      ' vs ', elems_trial[max_ij[1]])
+    #print('SL Min rel error', np.nanmin(err))
+    #print('---')
 
     try:
         np.save(cache_SL_fn, mat)
@@ -96,22 +96,22 @@ def RHS_vector(elems):
     N = len(elems)
     md5 = hashlib.md5(str(elems).encode()).hexdigest()
     cache_M0_fn = "{}/M0_dofs_{}_{}.npy".format('data', N, md5)
-    #if os.path.isfile(cache_M0_fn):
-    #    print("Loaded Initial Operator from file {}".format(cache_M0_fn))
-    #    return -np.load(cache_M0_fn)
+    if os.path.isfile(cache_M0_fn):
+        print("Loaded Initial Operator from file {}".format(cache_M0_fn))
+        return -np.load(cache_M0_fn)
 
     time_rhs_begin = time.time()
     global __elems_test, __M0
     __elems_test = elems
     __M0 = M0
     M0_u0 = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
-    __M0 = M0_coarse
-    M0_u0_coarse = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
-    err = np.abs((M0_u0 - M0_u0_coarse) / M0_u0)
-    print('---')
-    print('IP Max rel error', np.max(err), 'for', elems[np.argmax(err)])
-    print('IP Min rel error', np.min(err), 'for', elems[np.argmin(err)])
-    print('---')
+    #__M0 = M0_coarse
+    #M0_u0_coarse = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
+    #err = np.abs((M0_u0 - M0_u0_coarse) / M0_u0)
+    #print('---')
+    #print('IP Max rel error', np.max(err), 'for', elems[np.argmax(err)])
+    #print('IP Min rel error', np.min(err), 'for', elems[np.argmin(err)])
+    #print('---')
 
     np.save(cache_M0_fn, M0_u0)
     print('Calculating initial potential took {}s'.format(time.time() -
@@ -246,8 +246,7 @@ def error_estim_l2(i):
     global elems_glob
     global error_estimator
     global residual
-    return 0
-    #return error_estimator.WeightedL2(elems_glob[i], residual)
+    return error_estimator.WeightedL2(elems_glob[i], residual)
 
 
 if __name__ == "__main__":
@@ -259,13 +258,9 @@ if __name__ == "__main__":
     theta = 0.7
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
-                         initial_mesh=UnitSquareBoundaryRefined)
-    M0_coarse = InitialOperator(bdr_mesh=mesh,
-                                u0=u0,
-                                initial_mesh=UnitSquareBoundaryRefined,
-                                quad_int=4)
-    SL = SingleLayerOperator(mesh)
-    SL_coarse = SingleLayerOperator(mesh, quad_order=4)
+                         initial_mesh=UnitSquareBoundaryRefined,
+                         quad_int=4)
+    SL = SingleLayerOperator(mesh, quad_order=4)
 
     dofs = []
     errs_l2 = []
