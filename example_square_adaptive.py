@@ -317,6 +317,8 @@ if __name__ == "__main__":
             time.time() - time_hierarch_begin))
 
         # Calculate the weighted l2 error of the residual set global vars.
+        SL = SingleLayerOperator(mesh)
+
         def residual(t, x_hat, x):
             assert len(t) == len(x_hat) == x.shape[1]
             result = np.zeros(len(t))

@@ -25,7 +25,7 @@ class ErrorEstimator:
             residual_t = lambda x_hat, x: residual(np.repeat(t, len(x_hat)),
                                                    x_hat, x)
 
-            if elem_left.gamma_space == elem_right.gamma_space:
+            if elem_left.gamma_space is elem_right.gamma_space:
                 gamma = elem_left.gamma_space
                 assert np.all(
                     gamma(elem_left.space_interval[1]) == gamma(
