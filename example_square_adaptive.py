@@ -249,6 +249,13 @@ def error_estim_l2(i):
     return error_estimator.WeightedL2(elems_glob[i], residual)
 
 
+def error_estim_slo(i):
+    global elems_glob
+    global error_estimator
+    global residual
+    return error_estimator.Sobolev(elems_glob[i], residual)
+
+
 if __name__ == "__main__":
     N_procs = mp.cpu_count()
     mp.set_start_method('fork')
@@ -258,15 +265,15 @@ if __name__ == "__main__":
     theta = 0.7
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
-                         initial_mesh=UnitSquareBoundaryRefined,
-                         quad_int=4)
-    SL = SingleLayerOperator(mesh, quad_order=4)
+                         initial_mesh=UnitSquareBoundaryRefined)
+    SL = SingleLayerOperator(mesh)
 
     dofs = []
     errs_l2 = []
     errs_estim = []
+    errs_slo = []
     errs_hierch = []
-    error_estimator = ErrorEstimator(mesh)
+    error_estimator = ErrorEstimator(mesh, N_poly=7)
 
     for k in range(100):
         elems = list(mesh.leaf_elements)
@@ -311,7 +318,7 @@ if __name__ == "__main__":
 
         # Calculate the weighted l2 error of the residual set global vars.
         def residual(t, x_hat, x):
-            assert t.shape == x_hat.shape
+            assert len(t) == len(x_hat) == x.shape[1]
             result = np.zeros(len(t))
             for i, (t, x_hat, x) in enumerate(zip(t, x_hat, x.T)):
                 # Evaluate the SL for our trial function.
@@ -332,9 +339,20 @@ if __name__ == "__main__":
         print('Error estimation of weighted residual took {}s'.format(
             time.time() - time_l2_begin))
 
+        time_slo_begin = time.time()
+        elems_glob = elems
+        err_slo_sqr = np.array(
+            mp.Pool(N_procs).map(error_estim_slo, range(N), 10))
+        errs_slo.append(np.sqrt(np.sum(err_slo_sqr)))
+        print('Error estimation of Slobodeckij norm took {}s'.format(
+            time.time() - time_slo_begin))
+
         if k:
             rates_estim = np.log(
                 np.array(errs_estim[1:]) / np.array(errs_estim[:-1])) / np.log(
+                    np.array(dofs[1:]) / np.array(dofs[:-1]))
+            rates_slo = np.log(
+                np.array(errs_slo[1:]) / np.array(errs_slo[:-1])) / np.log(
                     np.array(dofs[1:]) / np.array(dofs[:-1]))
             rates_l2 = np.log(
                 np.array(errs_l2[1:]) / np.array(errs_l2[:-1])) / np.log(
@@ -344,14 +362,15 @@ if __name__ == "__main__":
                 np.array(errs_hierch[:-1])) / np.log(
                     np.array(dofs[1:]) / np.array(dofs[:-1]))
         else:
+            rates_slo = []
             rates_l2 = []
             rates_hierch = []
             rates_estim = []
 
         print(
-            '\ndofs={}\nerrs_l2={}\nerr_hierch={}\nerr_estim={}\n\nrates_l2={}\nrates_hierch={}\nrates_estim={}\n------'
-            .format(dofs, errs_l2, errs_hierch, errs_estim, rates_l2,
-                    rates_hierch, rates_estim))
+            '\ndofs={}\nerrs_l2={}\nerr_hierch={}\nerr_estim={}\nerrs_slo={}\n\nrates_l2={}\nrates_hierch={}\nrates_estim={}\nrates_slo={}\n------'
+            .format(dofs, errs_l2, errs_hierch, errs_estim, errs_slo, rates_l2,
+                    rates_hierch, rates_estim, rates_slo))
 
         print('Dorfler marking with theta = {}'.format(theta))
         s_idx = list(reversed(np.argsort(eta_sqr)))
