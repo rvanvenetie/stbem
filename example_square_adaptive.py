@@ -65,7 +65,7 @@ def SL_matrix(elems_test, elems_trial):
     __elems_trial = elems_trial
 
     __SL = SL
-    for j, col in enumerate(mp.Pool(N_procs).imap(SL_mat_col, range(M))):
+    for j, col in enumerate(mp.Pool(N_procs).imap(SL_mat_col, range(M), 10)):
         mat[:, j] = col
 
     #mat_coarse = np.zeros((N, M))
@@ -104,7 +104,7 @@ def RHS_vector(elems):
     global __elems_test, __M0
     __elems_test = elems
     __M0 = M0
-    M0_u0 = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
+    M0_u0 = np.array(mp.Pool(N_procs).map(IP_rhs, range(N), 10))
     #__M0 = M0_coarse
     #M0_u0_coarse = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
     #err = np.abs((M0_u0 - M0_u0_coarse) / M0_u0)
@@ -327,7 +327,7 @@ if __name__ == "__main__":
         time_l2_begin = time.time()
         elems_glob = elems
         err_estim_sqr = np.array(
-            mp.Pool(N_procs).map(error_estim_l2, range(N)))
+            mp.Pool(N_procs).map(error_estim_l2, range(N), 10))
         errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
         print('Error estimation of weighted residual took {}s'.format(
             time.time() - time_l2_begin))
