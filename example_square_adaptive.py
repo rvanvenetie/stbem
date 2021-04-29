@@ -35,62 +35,6 @@ def IP_rhs(j):
     return __M0.linform(__elems_test[j])[0]
 
 
-def SL_matrix(elems_test, elems_trial):
-    """ Evaluate the single layer matrix in parallel. """
-    N = len(elems_test)
-    M = len(elems_trial)
-
-    # For small N, M, simply do it inline.
-    if N < 5 and M < 5:
-        mat = np.zeros((N, M))
-        for i, elem_test in enumerate(elems_test):
-            for j, elem_trial in enumerate(elems_trial):
-                mat[i, j] = SL.bilform(elem_trial, elem_test)
-        return mat
-
-    md5 = hashlib.md5(
-        (str(elems_test) + str(elems_trial)).encode()).hexdigest()
-    cache_SL_fn = "{}/SL_{}x{}_{}.npy".format('data', N, M, md5)
-    if os.path.isfile(cache_SL_fn):
-        mat = np.load(cache_SL_fn)
-        print("Loaded Single Layer from file {}".format(cache_SL_fn))
-        return mat
-
-    time_mat_begin = time.time()
-    mat = np.zeros((N, M))
-
-    # Set up global variables for parallelizing.
-    global __elems_test, __elems_trial, __SL
-    __elems_test = elems_test
-    __elems_trial = elems_trial
-
-    __SL = SL
-    for j, col in enumerate(mp.Pool(N_procs).imap(SL_mat_col, range(M), 10)):
-        mat[:, j] = col
-
-    #mat_coarse = np.zeros((N, M))
-    #__SL = SL_coarse
-    #for j, col in enumerate(mp.Pool(N_procs).imap(SL_mat_col, range(M))):
-    #    mat_coarse[:, j] = col
-
-    #err = np.abs((mat - mat_coarse) / mat)
-    #max_ij = np.unravel_index(np.nanargmax(err), err.shape)
-    #print('---')
-    #print('SL Max rel error', np.nanmax(err), 'for', elems_test[max_ij[0]],
-    #      ' vs ', elems_trial[max_ij[1]])
-    #print('SL Min rel error', np.nanmin(err))
-    #print('---')
-
-    try:
-        np.save(cache_SL_fn, mat)
-        print("Stored Single Layer to {}".format(cache_SL_fn))
-    except:
-        pass
-    print('Calculating SL matrix took {}s'.format(time.time() -
-                                                  time_mat_begin))
-    return mat
-
-
 def RHS_vector(elems):
     """ Evaluate the initial potential vector in parallel. """
     N = len(elems)
@@ -139,7 +83,7 @@ class DummyElement:
                                          self.space_interval)
 
 
-def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
+def HierarchicalErrorEstimator(Phi, elems_coarse, RHS):
     """ Returns the hierarchical basis estimator for given function. """
 
     # Calcualte uniform refinement of the mesh.
@@ -166,7 +110,10 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
     elem_2_idx_fine = {k: v for v, k in enumerate(elems_fine)}
 
     # Evaluate SL matrix tested with the fine mesh.
-    mat = SL(elems_fine, elems_coarse)
+    mat = SL.bilform_matrix(elems_test=elems_fine,
+                            elems_trial=elems_coarse,
+                            cache_dir='data',
+                            use_mp=True)
     # TEST THIS MATRIX WITH SMALLER QUADRATURE.
     VPhi = mat @ Phi
 
@@ -190,7 +137,7 @@ def HierarchicalErrorEstimator(Phi, elems_coarse, SL, RHS):
 
     estim = np.zeros(len(elems_coarse))
     for i, elem_coarse in enumerate(elems_coarse):
-        S = SL(elem_2_children[i], elem_2_children[i])
+        S = SL.bilform_matrix(elem_2_children[i], elem_2_children[i])
         children = [elem_2_idx_fine[elem] for elem in elem_2_children[i]]
         #scaling = sum(mat[j, i] for j in children)
 
@@ -285,7 +232,7 @@ if __name__ == "__main__":
         dofs.append(N)
 
         # Calculate SL matrix.
-        mat = SL_matrix(elems, elems)
+        mat = SL.bilform_matrix(elems, elems, cache_dir='data', use_mp=True)
 
         # Calculate initial potential.
         rhs = RHS_vector(elems)
@@ -310,8 +257,7 @@ if __name__ == "__main__":
 
         # Do the hierarhical error estimator.
         time_hierarch_begin = time.time()
-        err_tot, eta_sqr = HierarchicalErrorEstimator(Phi, elems, SL_matrix,
-                                                      RHS_vector)
+        err_tot, eta_sqr = HierarchicalErrorEstimator(Phi, elems, RHS_vector)
         errs_hierch.append(err_tot)
         print('Hierarchical error estimator took {}s'.format(
             time.time() - time_hierarch_begin))
