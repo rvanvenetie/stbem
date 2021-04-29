@@ -19,7 +19,8 @@ class ErrorEstimator:
 
         self.slobodeckij = Slobodeckij(N_poly)
 
-    def __integrate_h_1_2(self, residual, t_a, t_b, x_a, x_b, gamma):
+    def __integrate_h_1_2(self, residual, t_a, t_b, x_a_1, x_b_1, gamma_1,
+                          x_a_2, x_b_2, gamma_2):
         val = np.zeros(self.gauss.weights.shape)
         h_t = float(t_b - t_a)
 

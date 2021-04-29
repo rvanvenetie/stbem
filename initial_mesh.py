@@ -93,10 +93,12 @@ class InitialMesh:
                 self.nbrs[edge] = elem
 
     def vertex_from_coords(self, xy, eps=1e-15):
+        result = None
         for vtx in self.vertices:
             if abs(vtx.x - xy[0]) <= eps and abs(vtx.y - xy[1]) <= eps:
-                return vtx
-        return None
+                assert result is None
+                result = vtx
+        return result
 
     def bisect_edge(self, a, b):
         assert not (a, b) in self.__bisect_edge

@@ -15,6 +15,7 @@ def gauss_quadrature_scheme(N_poly):
 def gauss_sqrtinv_quadrature_scheme(N_poly):
     """ Returns quadrature rule that is exact on 0^1 with weight 1/sqrt(x)
     for p(x) for deg(p) <= N_poly.  """
+    assert (N_poly % 2 != 0)
     N = (N_poly + 1) // 2
     nodes, weights = gauss_sqrtinv_quadrature_rule(N)
     return QuadScheme1D(nodes, weights)
