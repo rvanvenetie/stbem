@@ -70,8 +70,8 @@ class Slobodeckij:
     def seminorm_h_1_2_pw(self, f, a_1, b_1, gamma_1, a_2, b_2, gamma_2):
         """ Evaluates the squared H^{1/2}-seminorm of smooth f over the
             two elemens induced by gamma_1 and gamma_2.  """
-        assert gamma_1 is not gamma_2
-        assert np.all(gamma_1(b_1) == gamma_2(a_2))
+        #assert gamma_1 is not gamma_2
+        #assert np.all(gamma_1(b_1) == gamma_2(a_2))
 
         # Evaluate seminorm of f on [a_1, b_1].
         result = self.seminorm_h_1_2(f, a_1, b_1, gamma_1)

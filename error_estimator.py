@@ -26,7 +26,7 @@ class ErrorEstimator:
         self.gamma_len = mesh.gamma_space.gamma_length
 
         self.gauss = gauss_quadrature_scheme(N_poly)
-        self.gauss_2d = ProductScheme2D(self.gauss)
+        self.gauss_2d = ProductScheme2D(gauss_quadrature_scheme(N_poly))
         self.slobodeckij = Slobodeckij(N_poly)
 
     def __integrate_h_1_2(self, residual, t_a, t_b, elem_left, elem_right):
@@ -39,9 +39,9 @@ class ErrorEstimator:
 
             if elem_left.gamma_space is elem_right.gamma_space:
                 gamma = elem_left.gamma_space
-                assert np.all(
-                    gamma(elem_left.space_interval[1]) == gamma(
-                        elem_right.space_interval[0]))
+                #assert np.all(
+                #    gamma(elem_left.space_interval[1]) == gamma(
+                #        elem_right.space_interval[0]))
                 val[i] = self.slobodeckij.seminorm_h_1_2(
                     residual_t, elem_left.space_interval[0],
                     elem_right.space_interval[1], gamma)
@@ -106,6 +106,7 @@ class ErrorEstimator:
             ips.append((time_nbr,
                         self.__integrate_h_1_2(residual, t_a, t_b, elem_left,
                                                elem_right)))
+        assert len(ips) >= 2
         return math.fsum([val for elem, val in ips]), ips
 
     def sobolev_time(self, elem, residual):
@@ -133,6 +134,8 @@ class ErrorEstimator:
             ips.append((space_nbr,
                         self.__integrate_h_1_4(residual, t_a, t_b, x_a, x_b,
                                                elem.gamma_space)))
+
+        assert len(ips) >= 2
         return math.fsum([val for elem, val in ips]), ips
 
     def weighted_l2(self, elem, residual):
