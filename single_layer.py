@@ -1,4 +1,5 @@
 import numpy as np
+from single_layer_exact import spacetime_evaluated_1, spacetime_evaluated_2
 import hashlib
 import time
 import multiprocessing as mp
@@ -7,6 +8,7 @@ import math
 import random
 from parametrization import Circle, UnitSquare, LShape
 from mesh import Mesh, MeshParametrized
+from math import sqrt
 import itertools
 from scipy.special import expi, erf, expn, erfc
 from quadrature import log_quadrature_scheme, gauss_quadrature_scheme, ProductScheme2D, DuffyScheme2D
@@ -14,6 +16,7 @@ from mesh import Element
 
 FPI_INV = (4 * np.pi)**-1
 TPI_INV = (2 * np.pi)**-1
+PI_SQRT = math.sqrt(np.pi)
 
 
 def kernel(t, x):
@@ -353,6 +356,41 @@ class SingleLayerOperator:
                                                                  (t - t_a))))
         # Return the quadrature result.
         return (x_b - x_a) * np.dot(self.log_scheme.weights, vec)
+
+    def evaluate_pw(self, elem_trial, t, x):
+        """ Evaluates (V 1_trial)(t, x) for elem_trial lying on the 
+            same pane as x. """
+        if t <= elem_trial.time_interval[0]: return 0
+        a, b = elem_trial.space_interval
+        if x < a or x > b:
+            h = min(abs(a - x), abs(b - x))
+            k = max(abs(a - x), abs(b - x))
+            a, b = elem_trial.time_interval
+            if t <= b:
+                return -FPI_INV * (PI_SQRT * (2 * sqrt(
+                    (t - a))) * (erf(h / (2 * sqrt(
+                        (t - a)))) - erf(k / (2 * sqrt(
+                            (t - a))))) - h * expi(-(h**2 / (4 * (t - a)))) +
+                                   k * expi(-(k**2 / (4 * (t - a)))))
+            else:
+                return FPI_INV * (
+                    2 * PI_SQRT *
+                    (sqrt(t - a) *
+                     (-erf(h / (2 * sqrt(t - a))) + erf(k /
+                                                        (2 * sqrt(t - a)))) +
+                     sqrt(t - b) *
+                     (erf(h / (2 * sqrt(t - b))) - erf(k /
+                                                       (2 * sqrt(t - b))))) +
+                    h * expi(h**2 / (4 * (a - t))) - k * expi(k**2 /
+                                                              (4 * (a - t))) -
+                    h * expi(h**2 / (4 * (b - t))) + k * expi(k**2 /
+                                                              (4 * (b - t))))
+        elif a < x < b:
+            return spacetime_evaluated_1(
+                t, *elem_trial.time_interval, x - a) + spacetime_evaluated_1(
+                    t, *elem_trial.time_interval, b - x)
+        elif x == a or x == b:
+            return spacetime_evaluated_1(t, *elem_trial.time_interval, b - a)
 
     def evaluate_vector(self, t, x_hat):
         """ Returns the vector (V 1_elem)(t, gamma(x_hat)) for all elements in mesh. """

@@ -60,11 +60,9 @@ class ErrorEstimator:
 
         points = x_a + h_x * self.gauss.points
         for i, x_hat in enumerate(points):
-            x = gamma(x_hat)
 
             def slo(t):
-                return residual(t, np.repeat(x_hat, len(t)),
-                                np.repeat(x, len(t), axis=1))
+                return residual(t, np.repeat(x_hat, len(t)), gamma)
 
             val[i] = self.slobodeckij.seminorm_h_1_4(slo, t_a, t_b)
 
@@ -143,9 +141,8 @@ class ErrorEstimator:
         t_a, x_a = elem.time_interval[0], elem.space_interval[0]
         t = np.array(t_a + elem.h_t * self.gauss_2d.points[0])
         x_hat = np.array(x_a + elem.h_x * self.gauss_2d.points[1])
-        x = elem.gamma_space(x_hat)
 
-        res_sqr = np.asarray(residual(t, x_hat, x))**2
+        res_sqr = np.asarray(residual(t, x_hat, elem.gamma_space))**2
         res_l2 = elem.h_x * elem.h_t * np.dot(res_sqr, self.gauss_2d.weights)
 
         # Return the weighted l2 norm.
@@ -155,19 +152,23 @@ class ErrorEstimator:
         return self.sobolev_time(elem, residual)[0], self.sobolev_space(
             elem, residual)[0]
 
-    def residual(self, elems, Phi, SL, M0u0):
-        """ Returns the residual function. """
+    def residual_pw(self, elems, Phi, SL, M0u0):
+        """ Returns the residual function for a pw polygonal domain. """
         SL._init_elems()
 
-        def residual(t, x_hat, x):
-            assert len(t) == len(x_hat) == x.shape[1]
+        def residual(t, x_hat, gamma):
+            assert len(t) == len(x_hat)
+            x = gamma(x_hat)
             result = np.zeros(len(t))
             for i, (t, x_hat, x) in enumerate(zip(t, x_hat, x.T)):
                 # Evaluate the SL for our trial function.
                 VPhi = 0
                 for j, elem_trial in enumerate(elems):
-                    VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat,
-                                                 x.reshape(2, 1))
+                    if elem_trial.gamma_space is gamma:
+                        VPhi += Phi[j] * SL.evaluate_pw(elem_trial, t, x_hat)
+                    else:
+                        VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat,
+                                                     x.reshape(2, 1))
 
                 # Compare with rhs.
                 result[i] = VPhi + M0u0(t, x.reshape(2, 1))

@@ -1,5 +1,9 @@
 import numpy as np
+from math import sqrt
 from scipy.special import expi, erf, expn, erfc
+
+FPI_INV = (4 * np.pi)**-1
+PI_SQRT = sqrt(np.pi)
 
 
 def sign(x, y):
@@ -9,28 +13,22 @@ def sign(x, y):
     return 1
 
 
-def gint_1(a, b, h):
+def gint_1(z, h):
     """ Returns integral of g_z(x) for [0, h]. """
-    if a <= b:
-        return 0
-    else:
-        z = a - b
-        return -((2 * np.sqrt(np.pi) * np.sqrt(z) * erf(h / (2 * np.sqrt(z))) -
-                  h * expi(-h**2 / (4 * z))) / (4 * np.pi))
+    return -(
+        (2 * sqrt(np.pi) * sqrt(z) * erf(h /
+                                         (2 * sqrt(z))) - h * expi(-h**2 /
+                                                                   (4 * z))) /
+        (4 * np.pi))
 
 
-def gint_2(a, b, h, k):
+def gint_2(z, h, k):
     """ Returns integral of g_z(x) for [h, k] for 0 < h < k. """
     assert h < k
-    if a <= b:
-        return 0
-    else:
-        z = a - b
-        return (2 * np.sqrt(np.pi) * np.sqrt(z) *
-                (erf(h / (2 * np.sqrt(z))) - erf(k / (2 * np.sqrt(z)))) -
-                h * expi(-(h**2 /
-                           (4 * z))) + k * expi(-(k**2 /
-                                                  (4 * z)))) / (4 * np.pi)
+    z_sqrt = 2 * sqrt(z)
+    return FPI_INV * (PI_SQRT * z_sqrt * (erf(h / z_sqrt) - erf(k / z_sqrt)) -
+                      h * expi(-(h**2 / (4 * z))) + k * expi(-(k**2 /
+                                                               (4 * z))))
 
 
 def fint_1(a, b, h):
@@ -226,12 +224,14 @@ def spacetime_integrated_kernel_4(a, b, c, d, h, k, l):
 
 
 def spacetime_evaluated_1(t, a, b, h):
-    g_ta = gint_1(t, a, h)
-    g_tb = gint_1(t, b, h)
-    return g_tb - g_ta
+    result = 0
+    if t > a: result -= gint_1(t - a, h)
+    if t > b: result += gint_1(t - b, h)
+    return result
 
 
 def spacetime_evaluated_2(t, a, b, h, k):
-    g_ta = gint_2(t, a, h, k)
-    g_tb = gint_2(t, b, h, k)
-    return g_tb - g_ta
+    result = 0
+    if t > a: result -= gint_2(t - a, h, k)
+    if t > b: result += gint_2(t - b, h, k)
+    return result

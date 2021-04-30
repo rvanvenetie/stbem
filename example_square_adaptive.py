@@ -117,7 +117,7 @@ if __name__ == "__main__":
             time.time() - time_hierarch_begin))
 
         # Calculate the weighted l2 + sobolev error of the residual.
-        residual = error_estimator.residual(elems, Phi, SL, M0u0)
+        residual = error_estimator.residual_pw(elems, Phi, SL, M0u0)
 
         time_begin = time.time()
         weighted_l2 = error_estimator.estimate_weighted_l2(elems,

@@ -486,15 +486,11 @@ def test_single_layer_evaluate_pw_polygon():
                         val = SL.evaluate(elem_trial, t, x)
                         assert val == approx(val_exact, abs=0, rel=1e-8)
 
-                    if x < a:
+                    if x < a or x > b:
+                        h = min(abs(a - x), abs(b - x))
+                        k = max(abs(a - x), abs(b - x))
                         val_exact = spacetime_evaluated_2(
-                            t, *elem_trial.time_interval, a - x, b - x)
-                        val = SL.evaluate(elem_trial, t, x)
-                        assert val == approx(val_exact, rel=1e-8)
-
-                    if x > b:
-                        val_exact = spacetime_evaluated_2(
-                            t, *elem_trial.time_interval, x - b, x - a)
+                            t, *elem_trial.time_interval, h, k)
                         val = SL.evaluate(elem_trial, t, x)
                         assert val == approx(val_exact, rel=1e-8)
 
