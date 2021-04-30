@@ -39,19 +39,18 @@ def u_neumann(t, x_hat):
 def M0u0(t, xy):
     x = xy[0]
     y = xy[1]
-    pit = np.pi * t
-    sqrtt = np.sqrt(t)
-    return (((-(1 / 16)) * (erf((x - 2 * 1j * pit) / (2 * sqrtt)) + erf(
-        (1 - x + 2 * 1j * pit) /
-        (2 * sqrtt)) - np.exp(2 * 1j * x * np.pi) * (erf(
-            (1 - x - 2 * 1j * pit) / (2 * sqrtt)) + erf(
-                (x + 2 * 1j * pit) / (2 * sqrtt)))) * (erf(
-                    (y - 2 * 1j * pit) / (2 * sqrtt)) + erf(
-                        (1 - y + 2 * 1j * pit) /
+    pit = 2 * 1j * np.pi * t
+    sqrtt = math.sqrt(t)
+    return (((-(1 / 16)) * (erf((x - pit) / (2 * sqrtt)) + erf(
+        (1 - x + pit) / (2 * sqrtt)) - np.exp(2 * 1j * x * np.pi) * (erf(
+            (1 - x - pit) / (2 * sqrtt)) + erf(
+                (x + pit) / (2 * sqrtt)))) * (erf(
+                    (y - pit) / (2 * sqrtt)) + erf(
+                        (1 - y + pit) /
                         (2 * sqrtt)) - np.exp(2 * 1j * y * np.pi) * (erf(
-                            (1 - y - 2 * 1j * pit) / (2 * sqrtt)) + erf(
-                                (y + 2 * 1j * pit) / (2 * sqrtt))))) /
-            np.exp(1j * np.pi * (x + y - 2 * 1j * pit))).real
+                            (1 - y - pit) / (2 * sqrtt)) + erf(
+                                (y + pit) / (2 * sqrtt))))) /
+            np.exp(1j * np.pi * (x + y - pit))).real
 
 
 if __name__ == "__main__":

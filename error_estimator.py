@@ -164,6 +164,7 @@ class ErrorEstimator:
                 # Evaluate the SL for our trial function.
                 VPhi = 0
                 for j, elem_trial in enumerate(elems):
+                    if t <= elem_trial.time_interval[0]: continue
                     if elem_trial.gamma_space is gamma:
                         VPhi += Phi[j] * SL.evaluate_pw(elem_trial, t, x_hat)
                     else:

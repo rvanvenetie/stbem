@@ -224,9 +224,12 @@ def spacetime_integrated_kernel_4(a, b, c, d, h, k, l):
 
 
 def spacetime_evaluated_1(t, a, b, h):
-    result = 0
-    if t > a: result -= gint_1(t - a, h)
-    if t > b: result += gint_1(t - b, h)
+    if t <= a: return 0
+    result = (2 * sqrt(np.pi) * sqrt(t - a) * erf(h / (2 * sqrt(t - a))) -
+              h * expi(-h**2 / (4 * (t - a)))) / (4 * np.pi)
+    if t > b:
+        result -= (2 * sqrt(np.pi) * sqrt((t - b)) * erf(h / (2 * sqrt(
+            (t - b)))) - h * expi(-h**2 / (4 * (t - b)))) / (4 * np.pi)
     return result
 
 
