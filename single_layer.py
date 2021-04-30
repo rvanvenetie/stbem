@@ -1,4 +1,9 @@
 import numpy as np
+import hashlib
+import time
+import multiprocessing as mp
+from pytest import approx
+import math
 import random
 from parametrization import Circle, UnitSquare, LShape
 from mesh import Mesh, MeshParametrized
@@ -84,6 +89,18 @@ def double_time_integrated_kernel(a, b, c, d):
     return G
 
 
+def MP_SL_matrix_col(j):
+    """ Function to evaluate SL in parallel using the multiprocessing library. """
+    global __SL, __elems_test, __elems_trial
+    elem_trial = __elems_trial[j]
+    col = np.zeros(len(__elems_test))
+    for i, elem_test in enumerate(__elems_test):
+        if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
+            continue
+        col[i] = __SL.bilform(elem_trial, elem_test)
+    return col
+
+
 class SingleLayerOperator:
     def __init__(self, mesh, quad_order=12):
         self.gauss_scheme = gauss_quadrature_scheme(23)
@@ -94,6 +111,16 @@ class SingleLayerOperator:
         self.duff_log_log = DuffyScheme2D(self.log_log, symmetric=False)
         self.mesh = mesh
         self.gamma_len = self.mesh.gamma_space.gamma_length
+        self._init_elems()
+
+    def _init_elems(self):
+        # For all elements in the mesh, register the log scheme.
+        for elem in self.mesh.leaf_elements:
+            a, b = elem.space_interval
+            elem.__log_scheme_y = elem.gamma_space(a + (b - a) *
+                                                   self.log_scheme.points)
+            elem.__log_scheme_m_y = elem.gamma_space(a + (b - a) *
+                                                     self.log_scheme_m.points)
 
     def __integrate(self, f, a, b, c, d):
         """ Integrates a symmetric singular f over the square [a,b]x[c,d]. """
@@ -193,13 +220,34 @@ class SingleLayerOperator:
                                     *elem_trial.space_interval,
                                     *elem_test.space_interval)
 
-    def bilform_matrix(self, cache_dir=None):
+    def bilform_matrix(self,
+                       elems_test=None,
+                       elems_trial=None,
+                       cache_dir=None,
+                       use_mp=False):
         """ Returns the dense matrix <V 1_trial, 1_test>. """
-        elems = list(self.mesh.leaf_elements)
-        N = len(elems)
-        if cache_dir:
-            cache_fn = "{}/SL_dofs_{}_{}.npy".format(cache_dir, N,
-                                                     self.mesh.md5())
+        if elems_test is None:
+            elems_test = list(self.mesh.leaf_elements)
+        if elems_trial is None:
+            elems_trial = elems_test
+
+        N = len(elems_test)
+        M = len(elems_trial)
+
+        # For small N, M, simply construct matrix inline and return.
+        if N * M < 100:
+            mat = np.zeros((N, M))
+            for i, elem_test in enumerate(elems_test):
+                for j, elem_trial in enumerate(elems_trial):
+                    mat[i, j] = self.bilform(elem_trial, elem_test)
+            return mat
+
+        if cache_dir is not None:
+            md5 = hashlib.md5((str(self.mesh.gamma_space) + str(elems_test) +
+                               str(elems_trial)).encode()).hexdigest()
+            cache_fn = "{}/SL_{}_{}x{}_{}.npy".format(cache_dir,
+                                                      self.mesh.gamma_space, N,
+                                                      M, md5)
             try:
                 mat = np.load(cache_fn)
                 print("Loaded Single Layer from file {}".format(cache_fn))
@@ -207,18 +255,32 @@ class SingleLayerOperator:
             except:
                 pass
 
-        mat = np.zeros(shape=(N, N))
-        for i, elem_test in enumerate(elems):
-            for j, elem_trial in enumerate(elems):
-                mat[i, j] = self.bilform(elem_trial, elem_test)
+        time_mat_begin = time.time()
 
-        if cache_dir:
+        mat = np.zeros((N, M))
+        if not use_mp:
+            for i, elem_test in enumerate(elems_test):
+                for j, elem_trial in enumerate(elems_trial):
+                    mat[i, j] = self.bilform(elem_trial, elem_test)
+        else:
+            # Set up global variables for parallelizing.
+            globals()['__elems_test'] = elems_test
+            globals()['__elems_trial'] = elems_trial
+            globals()['__SL'] = self
+            for j, col in enumerate(
+                    mp.Pool(mp.cpu_count()).imap(MP_SL_matrix_col, range(M),
+                                                 10)):
+                mat[:, j] = col
+
+        if cache_dir is not None:
             try:
                 np.save(cache_fn, mat)
                 print("Stored Single Layer to {}".format(cache_fn))
             except:
                 pass
 
+        print('Calculating SL matrix took {}s'.format(time.time() -
+                                                      time_mat_begin))
         return mat
 
     def potential(self, elem_trial, t, x):
@@ -245,39 +307,52 @@ class SingleLayerOperator:
         """ Evaluates (V 1_trial)(t, gamma(x_hat)) for t, x_hat in the param domain. """
         if t <= elem_trial.time_interval[0]: return 0
         if x is None: x = self.mesh.gamma_space.eval(x_hat)
+        x_a, x_b = elem_trial.space_interval
 
-        # Calculate the time integrated kernel.
-        def G_time_parametrized(y_hat):
-            xy = (x - elem_trial.gamma_space(y_hat))**2
-            xy = xy[0] + xy[1]
-            a, b = elem_trial.time_interval
-            if t <= b:
-                return -FPI_INV * expi(-xy / (4 * (t - a)))
-            else:
-                return FPI_INV * (expi(-xy / (4 * (t - b))) - expi(-xy /
+        # Check if singularity lies in this element.
+        if x_a <= x_hat <= x_b:
+            # Calculate the time integrated kernel.
+            def G_time_parametrized(y_hat):
+                xy = (x - elem_trial.gamma_space(y_hat))**2
+                xy = xy[0] + xy[1]
+                a, b = elem_trial.time_interval
+                if t <= b:
+                    return -FPI_INV * expi(-xy / (4 * (t - a)))
+                else:
+                    return FPI_INV * (expi(-xy / (4 *
+                                                  (t - b))) - expi(-xy /
                                                                    (4 *
                                                                     (t - a))))
 
-        # Integrate. Check where singularity lies, i.e. for y = x_hat.
-        a, b = elem_trial.space_interval
-        if a <= x_hat <= b:
-            assert np.all(elem_trial.gamma_space(x_hat) == x)
             return self.log_scheme_m.integrate(
-                G_time_parametrized, a, x_hat) + self.log_scheme.integrate(
-                    G_time_parametrized, x_hat, b)
+                G_time_parametrized, x_a, x_hat) + self.log_scheme.integrate(
+                    G_time_parametrized, x_hat, x_b)
 
         # Calculate distance of x_hat to both endpoints.
         if self.mesh.glue_space:
-            d_a = min(abs(x_hat - a), abs(self.gamma_len - x_hat + a))
-            d_b = min(abs(x_hat - b), abs(self.gamma_len - b + x_hat))
+            d_a = min(abs(x_hat - x_a), abs(self.gamma_len - x_hat + x_a))
+            d_b = min(abs(x_hat - x_b), abs(self.gamma_len - x_b + x_hat))
         else:
-            d_a = abs(x_hat - a)
-            d_b = abs(x_hat - b)
+            d_a = abs(x_hat - x_a)
+            d_b = abs(x_hat - x_b)
 
+        # Calculate |x - gamma(yhat)|^2 for the quadrature rule.
         if d_a <= d_b:
-            return self.log_scheme.integrate(G_time_parametrized, a, b)
+            xy = (x - elem_trial.__log_scheme_y)**2
         else:
-            return self.log_scheme_m.integrate(G_time_parametrized, a, b)
+            xy = (x - elem_trial.__log_scheme_m_y)**2
+        xy = xy[0] + xy[1]
+
+        # Evaluate the time integrated kernel for the above points.
+        t_a, t_b = elem_trial.time_interval
+        if t <= t_b:
+            vec = -FPI_INV * expi(-xy / (4 * (t - t_a)))
+        else:
+            vec = FPI_INV * (expi(-xy / (4 * (t - t_b))) - expi(-xy /
+                                                                (4 *
+                                                                 (t - t_a))))
+        # Return the quadrature result.
+        return (x_b - x_a) * np.dot(self.log_scheme.weights, vec)
 
     def evaluate_vector(self, t, x_hat):
         """ Returns the vector (V 1_elem)(t, gamma(x_hat)) for all elements in mesh. """

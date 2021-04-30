@@ -133,6 +133,9 @@ class Circle(PiecewiseParametrization):
     def project(self, x):
         """ Projects the vector x onto the surface and returns the params. """
 
+    def __repr__(self):
+        return "Circle"
+
 
 class UnitSquare(PiecewisePolygon):
     def __init__(self):
@@ -152,6 +155,9 @@ class UnitSquare(PiecewisePolygon):
         #    f,
         #    [[[0.0, 0.0], [1.0, 0.0]], [[0.0, 1.0], [1.0, 1.0]]],
         #)
+
+    def __repr__(self):
+        return "UnitSquare"
 
 
 class PiSquare(PiecewisePolygon):
@@ -173,6 +179,9 @@ class PiSquare(PiecewisePolygon):
         #    [[[0.0, 0.0], [1.0, 0.0]], [[0.0, 1.0], [1.0, 1.0]]],
         #)
 
+    def __repr__(self):
+        return "PiSquare"
+
 
 class LShape(PiecewisePolygon):
     def __init__(self):
@@ -183,6 +192,9 @@ class LShape(PiecewisePolygon):
         v4 = np.array([-1, 1])
         v5 = np.array([-1, 0])
         super().__init__(vertices=[v0, v1, v2, v3, v4, v5, v0])
+
+    def __repr__(self):
+        return "LShape"
 
 
 class UnitInterval(PiecewisePolygon):

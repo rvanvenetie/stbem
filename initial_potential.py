@@ -1,4 +1,8 @@
 from mesh import Mesh, MeshParametrized
+import multiprocessing as mp
+import hashlib
+import time
+import os
 import math
 from initial_mesh import UnitSquareBoundaryRefined
 import initial_mesh
@@ -17,6 +21,11 @@ def time_integrated_kernel(a, b):
         return lambda xy: 1. / (4 * np.pi) * (exp1(xy /
                                                    (4 * b)) - exp1(xy /
                                                                    (4 * a)))
+
+
+def MP_M0_val(j):
+    """ Function to evaluate M0 in parallel using the multiprocessing library. """
+    return __M0.linform(__elems[j])[0]
 
 
 class InitialOperator:
@@ -133,13 +142,46 @@ class InitialOperator:
         #assert touch_bdr >= 1
         return math.fsum([val for elem, val in ips]), ips
 
-    def linform_vector(self):
+    def linform_vector(self, elems=None, cache_dir=None, use_mp=False):
         """ Evaluates <M_0 u_0, 1_trial> for all elems in bdr mesh. """
-        elems = list(self.bdr_mesh.leaf_elements)
+        if elems is None:
+            elems = list(self.bdr_mesh.leaf_elements)
         N = len(elems)
-        vec = np.zeros(shape=N)
-        for j, elem_trial in enumerate(elems):
-            vec[j], _ = self.linform(elem_trial)
+
+        if cache_dir is not None:
+            md5 = hashlib.md5((str(self.bdr_mesh.gamma_space) +
+                               str(elems)).encode()).hexdigest()
+            cache_fn = "{}/M0_{}_{}_{}.npy".format(cache_dir,
+                                                   self.bdr_mesh.gamma_space,
+                                                   N, md5)
+            try:
+                vec = np.load(cache_fn)
+                print("Loaded Initial Operator from file {}".format(cache_fn))
+                return vec
+            except:
+                pass
+
+        time_rhs_begin = time.time()
+        if not use_mp:
+            vec = np.zeros(shape=N)
+            for j, elem_trial in enumerate(elems):
+                vec[j], _ = self.linform(elem_trial)
+        else:
+            # Set up global variables for parallelizing.
+            globals()['__elems'] = elems
+            globals()['__M0'] = self
+            vec = np.array(
+                mp.Pool(mp.cpu_count()).map(MP_M0_val, range(N), 10))
+
+        print('Calculating initial potential took {}s'.format(time.time() -
+                                                              time_rhs_begin))
+        if cache_dir is not None:
+            try:
+                np.save(cache_fn, vec)
+                print("Stored Initial Operator to {}".format(cache_fn))
+            except:
+                pass
+
         return vec
 
     def evaluate(self, t, x):
