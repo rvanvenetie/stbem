@@ -155,8 +155,8 @@ class ErrorEstimator:
         return self.sobolev_time(elem, residual)[0], self.sobolev_space(
             elem, residual)[0]
 
-    def estimate(self, elems, Phi, SL, M0u0, use_mp=False):
-        """ Returns the error estimator for given function Phi. """
+    def residual(self, elems, Phi, SL, M0u0):
+        """ Returns the residual function. """
         SL._init_elems()
 
         def residual(t, x_hat, x):
@@ -173,19 +173,37 @@ class ErrorEstimator:
                 result[i] = VPhi + M0u0(t, x.reshape(2, 1))
             return result
 
-        N = len(elems)
+        return residual
+
+    def estimate_weighted_l2(self, elems, residual, use_mp=False):
+        """ Returns the error estimator for given function Phi. """
         if not use_mp:
             weighted_l2 = [self.weighted_l2(elem, residual) for elem in elems]
-            sobolev = [self.sobolev(elem, residual) for elem in elems]
         else:
+            N = len(elems)
             globals()['__residual'] = residual
             globals()['__elems'] = elems
             globals()['__error_estimator'] = self
             cpu = mp.cpu_count()
             weighted_l2 = list(mp.Pool(cpu).map(MP_estim_l2, range(N), 10))
+
+        weighted_l2 = np.array(weighted_l2)
+        return weighted_l2
+
+    def estimate_sobolev(self, elems, residual, use_mp=False):
+        """ Returns the error estimator for given function Phi. """
+        if not use_mp:
+            sobolev = [self.sobolev(elem, residual) for elem in elems]
+        else:
+            N = len(elems)
+            globals()['__residual'] = residual
+            globals()['__elems'] = elems
+            globals()['__error_estimator'] = self
+            cpu = mp.cpu_count()
             sobolev = list(mp.Pool(cpu).map(MP_estim_sobolev, range(N), 10))
 
-        return np.sum(weighted_l2, axis=1), np.sum(sobolev, axis=1)
+        sobolev = np.array(sobolev)
+        return sobolev
 
 
 if __name__ == "__main__":

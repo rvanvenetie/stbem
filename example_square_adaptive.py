@@ -77,6 +77,8 @@ if __name__ == "__main__":
     for k in range(100):
         elems = list(mesh.leaf_elements)
         N = len(mesh.leaf_elements)
+        md5 = hashlib.md5(
+            (str(mesh.gamma_space) + str(elems)).encode()).hexdigest()
         print('Loop with {} dofs'.format(N))
         print(mesh.gmsh(use_gamma=True),
               file=open("./data/adaptive_N_{}_{}.gmsh".format(N, mesh.md5()),
@@ -114,16 +116,27 @@ if __name__ == "__main__":
         print('Hierarchical error estimator took {}s'.format(
             time.time() - time_hierarch_begin))
 
-        # Calculate the weighted l2 error of the residual set global vars.
+        # Calculate the weighted l2 + sobolev error of the residual.
+        residual = error_estimator.residual(elems, Phi, SL, M0u0)
+
         time_begin = time.time()
-        err_estim_sqr, err_slo_sqr = error_estimator.estimate(elems,
-                                                              Phi,
-                                                              SL,
-                                                              M0u0,
-                                                              use_mp=True)
-        errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
-        errs_slo.append(np.sqrt(np.sum(err_slo_sqr)))
-        print('Error estimation took {}s'.format(time.time() - time_begin))
+        weighted_l2 = error_estimator.estimate_weighted_l2(elems,
+                                                           residual,
+                                                           use_mp=True)
+        np.save('data/weighted_l2_{}_{}.npy'.format(N, md5), weighted_l2)
+        errs_estim.append(np.sqrt(np.sum(weighted_l2)))
+        print('Error estimation of weighted residual took {}s'.format(
+            time.time() - time_begin))
+
+        time_begin = time.time()
+        sobolev = error_estimator.estimate_sobolev(elems,
+                                                   residual,
+                                                   use_mp=True)
+        np.save('data/sobolev_{}_{}.npy'.format(N, md5), sobolev)
+        errs_slo.append(np.sqrt(np.sum(sobolev)))
+        print(
+            'Error estimation of Slobodeckij normtook {}s'.format(time.time() -
+                                                                  time_begin))
 
         if k:
             rates_estim = np.log(
