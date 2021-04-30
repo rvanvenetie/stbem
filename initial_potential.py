@@ -184,34 +184,6 @@ class InitialOperator:
 
         return vec
 
-    def RHS_vector(elems):
-        """ Evaluate the initial potential vector in parallel. """
-        N = len(elems)
-        md5 = hashlib.md5(str(elems).encode()).hexdigest()
-        cache_M0_fn = "{}/M0_dofs_{}_{}.npy".format('data', N, md5)
-        if os.path.isfile(cache_M0_fn):
-            print("Loaded Initial Operator from file {}".format(cache_M0_fn))
-            return -np.load(cache_M0_fn)
-
-        time_rhs_begin = time.time()
-        global __elems_test, __M0
-        __elems_test = elems
-        __M0 = M0
-        M0_u0 = np.array(mp.Pool(N_procs).map(IP_rhs, range(N), 10))
-        #__M0 = M0_coarse
-        #M0_u0_coarse = np.array(mp.Pool(N_procs).map(IP_rhs, range(N)))
-        #err = np.abs((M0_u0 - M0_u0_coarse) / M0_u0)
-        #print('---')
-        #print('IP Max rel error', np.max(err), 'for', elems[np.argmax(err)])
-        #print('IP Min rel error', np.min(err), 'for', elems[np.argmin(err)])
-        #print('---')
-
-        np.save(cache_M0_fn, M0_u0)
-        print('Calculating initial potential took {}s'.format(time.time() -
-                                                              time_rhs_begin))
-        print("Stored Initial Operator to {}".format(cache_M0_fn))
-        return -M0_u0
-
     def evaluate(self, t, x):
         """ Evaluates (M_0 u_0)(t,x) for t,x. """
         x = np.array(x)
