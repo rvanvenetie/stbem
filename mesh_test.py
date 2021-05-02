@@ -271,3 +271,22 @@ def test_parametrized():
             assert np.all(
                 gamma.eval(float(elem.vertices[0].x)) == elem.gamma_space(
                     float(elem.vertices[0].x)))
+
+
+def test_dorfler_isotropic():
+    gamma = UnitSquare()
+    mesh = MeshParametrized(gamma)
+    random.seed(5)
+    for k in range(12):
+        eta = np.random.rand(len(mesh.leaf_elements))
+        mesh.dorfler_refine_isotropic(eta, 0.6)
+
+
+def test_dorfler_anisotropic():
+    gamma = UnitSquare()
+    mesh = MeshParametrized(gamma)
+    np.random.seed(5)
+    for k in range(12):
+        eta = np.random.rand(len(mesh.leaf_elements), 2)
+        mesh.dorfler_refine_anisotropic(eta, 0.6)
+    print(mesh.gmsh())

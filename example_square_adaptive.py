@@ -81,8 +81,9 @@ if __name__ == "__main__":
             (str(mesh.gamma_space) + str(elems)).encode()).hexdigest()
         print('Loop with {} dofs'.format(N))
         print(mesh.gmsh(use_gamma=True),
-              file=open("./data/adaptive_N_{}_{}.gmsh".format(N, mesh.md5()),
-                        "w"))
+              file=open(
+                  "./data/adaptive_{}_{}_{}.gmsh".format(
+                      mesh.gamma_space, N, mesh.md5()), "w"))
         dofs.append(N)
 
         # Calculate SL matrix.
@@ -111,8 +112,11 @@ if __name__ == "__main__":
 
         # Do the hierarhical error estimator.
         time_hierarch_begin = time.time()
-        err_tot, eta_sqr = hierarch_error_estimator.estimate(elems, Phi)
-        errs_hierch.append(err_tot)
+        hierarch = hierarch_error_estimator.estimate(elems, Phi)
+        print('Hierarch\t time: {}\t space: {}\t'.format(
+            np.sum(hierarch[:, 0]), np.sum(hierarch[:, 1])))
+        np.save('data/hierarch_{}_{}.npy'.format(N, md5), hierarch)
+        errs_hierch.append(np.sqrt(np.sum(hierarch)))
         print('Hierarchical error estimator took {}s'.format(
             time.time() - time_hierarch_begin))
 
@@ -123,6 +127,8 @@ if __name__ == "__main__":
         weighted_l2 = error_estimator.estimate_weighted_l2(elems,
                                                            residual,
                                                            use_mp=True)
+        print('Weighted L2\t time: {}\t space: {}\t'.format(
+            np.sum(weighted_l2[:, 0]), np.sum(weighted_l2[:, 1])))
         np.save('data/weighted_l2_{}_{}.npy'.format(N, md5), weighted_l2)
         errs_estim.append(np.sqrt(np.sum(weighted_l2)))
         print('Error estimation of weighted residual took {}s'.format(
@@ -132,6 +138,8 @@ if __name__ == "__main__":
         sobolev = error_estimator.estimate_sobolev(elems,
                                                    residual,
                                                    use_mp=True)
+        print('Sobolev\t time: {}\t space: {}\t'.format(
+            np.sum(sobolev[:, 0]), np.sum(sobolev[:, 1])))
         np.save('data/sobolev_{}_{}.npy'.format(N, md5), sobolev)
         errs_slo.append(np.sqrt(np.sum(sobolev)))
         print(
@@ -162,23 +170,5 @@ if __name__ == "__main__":
             '\ndofs={}\nerrs_l2={}\nerr_hierch={}\nerr_estim={}\nerrs_slo={}\n\nrates_l2={}\nrates_hierch={}\nrates_estim={}\nrates_slo={}\n------'
             .format(dofs, errs_l2, errs_hierch, errs_estim, errs_slo, rates_l2,
                     rates_hierch, rates_estim, rates_slo))
-
-        print('Dorfler marking with theta = {}'.format(theta))
-        s_idx = list(reversed(np.argsort(eta_sqr)))
-        eta_tot_sqr = np.sum(eta_sqr)
-        cumsum = 0.0
-        marked = []
-        for i in s_idx:
-            marked.append(elems[i])
-            cumsum += eta_sqr[i]
-            if cumsum >= eta_tot_sqr * theta**2:
-                break
-        assert np.sqrt(cumsum) >= theta * err_tot
-
-        print('Marked {} / {} elements'.format(len(marked), N))
-        # First refine the coarse elements.
-        marked.sort(key=lambda elem: elem.levels)
-        for elem in marked:
-            assert not elem.children
-            mesh.refine(elem)
-        print('After refinement {} elements'.format(len(mesh.leaf_elements)))
+        #mesh.dorfler_refine_isotropic(np.sum(sobolev, axis=1), theta)
+        mesh.dorfler_refine_anisotropic(sobolev, theta)

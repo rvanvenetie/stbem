@@ -328,6 +328,83 @@ class Mesh:
         for elem in leaves:
             self.refine_space(elem)
 
+    def dorfler_refine_isotropic(self, eta_sqr, theta):
+        print('Dorfler marking with theta = {}'.format(theta))
+        elems = list(self.leaf_elements)
+        N = len(elems)
+        assert len(eta_sqr) == N
+        s_idx = list(reversed(np.argsort(eta_sqr)))
+        eta_tot_sqr = np.sum(eta_sqr)
+        cumsum = 0.0
+        marked = []
+        for i in s_idx:
+            marked.append(elems[i])
+            cumsum += eta_sqr[i]
+            if cumsum >= eta_tot_sqr * theta**2:
+                break
+        assert np.sqrt(cumsum) >= theta * np.sqrt(eta_tot_sqr)
+        print('Marked {} / {} elements'.format(len(marked), N))
+
+        # First refine in time.
+        marked.sort(key=lambda elem: elem.level_time)
+        children_time = []
+        for elem in marked:
+            assert not elem.children
+            children_time.extend(self.refine_time(elem))
+
+        # Then refine in space.
+        children_time.sort(key=lambda elem: elem.level_space)
+        for elem in children_time:
+            assert not elem.children
+            self.refine_space(elem)
+        print(
+            'Refinement added {} elements'.format(len(self.leaf_elements) - N))
+
+    def dorfler_refine_anisotropic(self, eta_sqr, theta):
+        print('Dorfler marking with theta = {}'.format(theta))
+        elems = list(self.leaf_elements)
+        N = len(elems)
+        assert eta_sqr.shape == (N, 2)
+        # Concatenate both lists.
+        errs = [(val, elem, 0) for val, elem in zip(eta_sqr[:, 0], elems)]
+        errs += [(val, elem, 1) for val, elem in zip(eta_sqr[:, 1], elems)]
+        errs.sort(reverse=True, key=lambda tup: tup[0])
+        eta_tot_sqr = np.sum(eta_sqr)
+        cumsum = 0.0
+        marked = [[], []]
+        for val, elem, refine_axis in errs:
+            marked[refine_axis].append(elem)
+            cumsum += val
+            if cumsum >= eta_tot_sqr * theta**2:
+                break
+        assert np.sqrt(cumsum) >= theta * np.sqrt(eta_tot_sqr)
+        print('Marked {} elements for time refinemenent.'.format(
+            len(marked[0]), N))
+        print('Marked {} elements for space refinemenent.'.format(
+            len(marked[1]), N))
+
+        # First refine in time.
+        marked[0].sort(key=lambda elem: elem.level_time)
+        for elem in marked[0]:
+            assert not elem.children
+            self.refine_time(elem)
+
+        # Replace elements marked for space refinement that have been refined
+        # by the time refinemenent.
+        marked_space = []
+        for elem in marked[1]:
+            if elem.children:
+                marked_space.extend(elem.children)
+            else:
+                marked_space.append(elem)
+
+        marked_space.sort(key=lambda elem: elem.level_space)
+        for elem in marked_space:
+            assert not elem.children
+            self.refine_space(elem)
+        print(
+            'Refinement added {} elements'.format(len(self.leaf_elements) - N))
+
     def md5(self):
         return hashlib.md5(self.gmsh().encode()).hexdigest()
 
@@ -405,17 +482,27 @@ def Prolongate(vec_coarse, elems_coarse, elems_fine):
 
 
 if __name__ == "__main__":
-    #mesh = Mesh(glue_space=True)
-    #random.seed(5)
-    #for _ in range(20):
-    #    elem = random.choice(list(mesh.leaf_elements))
-    #    mesh.refine_axis(elem, random.random() < 0.5)
-    mesh = MeshParametrized(Circle())
-    #mesh.uniform_refine()
-    #mesh.uniform_refine()
-    #mesh.uniform_refine()
-    #random.seed(5)
-    #for _ in range(20):
-    #    elem = random.choice(list(mesh.leaf_elements))
-    #    mesh.refine_axis(elem, random.random() < 0.5)
-    print(mesh.gmsh())
+    gamma = UnitSquare()
+    mesh = MeshParametrized(gamma)
+    np.random.seed(5)
+    for k in range(12):
+        eta = np.random.rand(len(mesh.leaf_elements), 2)
+        mesh.dorfler_refine_anisotropic(eta, 0.6)
+
+#    mesh = Mesh()
+#    mesh.uniform_refine_space()
+#    print(mesh.leaf_elements)
+#    asdf
+#    #random.seed(5)
+#    #for _ in range(20):
+#    #    elem = random.choice(list(mesh.leaf_elements))
+#    #    mesh.refine_axis(elem, random.random() < 0.5)
+#    mesh = MeshParametrized(Circle())
+#    #mesh.uniform_refine()
+#    #mesh.uniform_refine()
+#    #mesh.uniform_refine()
+#    #random.seed(5)
+#    #for _ in range(20):
+#    #    elem = random.choice(list(mesh.leaf_elements))
+#    #    mesh.refine_axis(elem, random.random() < 0.5)
+#    print(mesh.gmsh())
