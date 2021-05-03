@@ -155,8 +155,9 @@ class Element:
         return (self.edges[1 - ax], self.edges[3 - ax])
 
     def __repr__(self):
-        return "Elem(t={}, x={})".format(self.time_interval,
-                                         self.space_interval)
+        return "Elem(i={},t={}, x={})".format(self.glob_idx,
+                                              self.time_interval,
+                                              self.space_interval)
 
 
 class Mesh:
@@ -190,6 +191,7 @@ class Mesh:
                 e3 = Edge(vertices=(v2, v3))
                 e4 = Edge(vertices=(v3, v0))
                 roots.append(Element(edges=[e1, e2, e3, e4], levels=(0, 0)))
+                roots[-1].glob_idx = len(roots) - 1
 
                 # Set boundary edges correctly.
                 if j == 0: e1.on_boundary = True
@@ -220,6 +222,7 @@ class Mesh:
         self.vertices = vertices
         self.roots = roots
         self.leaf_elements = OrderedDict.fromkeys(roots)
+        self.N_elements = len(roots)
 
     def __bisect_edge(self, edge):
         """ Bisects edge and returns the vertex in the middle of edge. """
@@ -291,6 +294,10 @@ class Mesh:
                                     edges[2].children[0], e2),
                              levels=(elem.level_time, elem.level_space + 1),
                              parent=elem)
+
+        child1.glob_idx = self.N_elements
+        child2.glob_idx = self.N_elements + 1
+        self.N_elements += 2
 
         # Update datastructures with new elements.
         self.leaf_elements.pop(elem)
