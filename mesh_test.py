@@ -167,9 +167,14 @@ def test_uniform_refine():
         N_t = len(initial_time_mesh) - 1
         N_x = len(initial_space_mesh) - 1
         for k in range(4):
+            indices = set()
             for elem in mesh.leaf_elements:
                 assert elem.levels == (k, k)
+                indices.add(elem.glob_idx)
+
             assert len(mesh.leaf_elements) == N_t * 2**k * N_x * 2**k
+            assert len(mesh.leaf_elements) == len(indices)
+
             mesh.uniform_refine()
 
 
