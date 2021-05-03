@@ -37,7 +37,11 @@ class ErrorEstimator:
             residual_t = lambda x_hat, x: residual(np.repeat(t, len(x_hat)),
                                                    x_hat, x)
 
-            if elem_left.gamma_space is elem_right.gamma_space:
+            if elem_right is None:
+                val[i] = self.slobodeckij.seminorm_h_1_2(
+                    residual_t, *elem_left.space_interval,
+                    elem_left.gamma_space)
+            elif elem_left.gamma_space is elem_right.gamma_space:
                 gamma = elem_left.gamma_space
                 assert np.all(
                     gamma(elem_left.space_interval[1]) == gamma(
@@ -77,7 +81,7 @@ class ErrorEstimator:
         That is, for every neighbour along a time axis, we evaluate
             |r|^2_{L(J cap J'; H^{1/2}(K cup K'))}.
         """
-        time_neighbours = []
+        time_neighbours = [elem]
         for edge in elem.edges_axis(0):
             time_neighbours += edge.neighbour_elements()
 
@@ -103,7 +107,9 @@ class ErrorEstimator:
                 elem_left = time_nbr
                 elem_right = elem
             else:
-                assert False
+                assert time_nbr is elem
+                elem_left = elem
+                elem_right = None
 
             ips.append((time_nbr,
                         self.__integrate_h_1_2(residual, t_a, t_b, elem_left,
@@ -116,7 +122,7 @@ class ErrorEstimator:
             That is, for every neighbour along a space axis, we evaluate
             |r|^2_{H^{1/4}(J cup J'; L_2(K cap  K')}.
         """
-        space_neighbours = []
+        space_neighbours = [elem]
         for edge in elem.edges_axis(1):
             space_neighbours += edge.neighbour_elements()
 
