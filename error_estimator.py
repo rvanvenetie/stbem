@@ -35,6 +35,8 @@ class ErrorEstimator:
         if not isinstance(N_poly, tuple):
             N_poly = (N_poly, N_poly, N_poly)
         N_weighted_l2, N_slobo_outer, N_slobo_inner = N_poly
+        print('N_weighted_l2={}\nN_slobo_outer={}\nN_slobo_inner={}\n'.format(
+            *N_poly))
 
         self.gamma_len = mesh.gamma_space.gamma_length
         self.gauss_2d = ProductScheme2D(gauss_quadrature_scheme(N_weighted_l2))

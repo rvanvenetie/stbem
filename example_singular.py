@@ -52,7 +52,7 @@ if __name__ == "__main__":
     errs_weighted_l2 = []
     errs_slo = []
     errs_hierch = []
-    error_estimator = ErrorEstimator(mesh, N_poly=7)
+    error_estimator = ErrorEstimator(mesh, N_poly=5)
     hierarch_error_estimator = HierarchicalErrorEstimator(SL=SL, M0=M0)
 
     for k in range(100):
