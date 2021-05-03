@@ -191,7 +191,7 @@ class ErrorEstimator:
             globals()['__elems'] = elems
             globals()['__error_estimator'] = self
             cpu = mp.cpu_count()
-            weighted_l2 = list(mp.Pool(cpu).map(MP_estim_l2, range(N), 10))
+            weighted_l2 = list(mp.Pool(cpu).map(MP_estim_l2, range(N)))
 
         weighted_l2 = np.array(weighted_l2)
         return weighted_l2
@@ -206,7 +206,7 @@ class ErrorEstimator:
             globals()['__elems'] = elems
             globals()['__error_estimator'] = self
             cpu = mp.cpu_count()
-            sobolev = list(mp.Pool(cpu).map(MP_estim_sobolev, range(N), 10))
+            sobolev = list(mp.Pool(cpu).map(MP_estim_sobolev, range(N)))
 
         sobolev = np.array(sobolev)
         return sobolev
