@@ -1,4 +1,5 @@
 import numpy as np
+from math import sqrt
 from copy import deepcopy
 from mesh import Vertex, Element
 import multiprocessing as mp
@@ -67,8 +68,9 @@ if __name__ == "__main__":
     SL = SingleLayerOperator(mesh)
 
     dofs = []
-    errs_l2 = []
-    errs_estim = []
+    errs_trace = []
+    errs_unweighted_l2 = []
+    errs_weighted_l2 = []
     errs_slo = []
     errs_hierch = []
     error_estimator = ErrorEstimator(mesh, N_poly=7)
@@ -98,22 +100,22 @@ if __name__ == "__main__":
         print('Solving matrix took {}s'.format(time.time() - time_solve_begin))
 
         # Estimate the l2 error of the neumann trace.
-        time_l2_begin = time.time()
+        time_trace_begin = time.time()
         gauss_2d = ProductScheme2D(gauss_quadrature_scheme(11))
-        err_l2 = []
+        err_trace = []
         for i, elem in enumerate(elems):
             err = lambda tx: (Phi[i] - u_neumann(tx[0], tx[1]))**2
-            err_l2.append(
+            err_trace.append(
                 gauss_2d.integrate(err, *elem.time_interval,
                                    *elem.space_interval))
-        errs_l2.append(np.sqrt(math.fsum(err_l2)))
+        errs_trace.append(np.sqrt(math.fsum(err_trace)))
         print('Error estimation of \Phi - \partial_n took {}s'.format(
-            time.time() - time_l2_begin))
+            time.time() - time_trace_begin))
 
         # Do the hierarhical error estimator.
         time_hierarch_begin = time.time()
         hierarch = hierarch_error_estimator.estimate(elems, Phi)
-        print('Hierarch\t time: {}\t space: {}\t'.format(
+        print('\nHierarch\t time: {}\t space: {}\t'.format(
             np.sum(hierarch[:, 0]), np.sum(hierarch[:, 1])))
         np.save('data/hierarch_{}_{}.npy'.format(N, md5), hierarch)
         errs_hierch.append(np.sqrt(np.sum(hierarch)))
@@ -127,10 +129,18 @@ if __name__ == "__main__":
         weighted_l2 = error_estimator.estimate_weighted_l2(elems,
                                                            residual,
                                                            use_mp=True)
-        print('Weighted L2\t time: {}\t space: {}\t'.format(
+        print('\nWeighted L2\t time: {}\t space: {}\t'.format(
             np.sum(weighted_l2[:, 0]), np.sum(weighted_l2[:, 1])))
         np.save('data/weighted_l2_{}_{}.npy'.format(N, md5), weighted_l2)
-        errs_estim.append(np.sqrt(np.sum(weighted_l2)))
+        errs_weighted_l2.append(np.sqrt(np.sum(weighted_l2)))
+
+        # Calculate the _unweighted_ l2 error.
+        err_unweighted_l2 = 0
+        for i, elem in enumerate(elems):
+            err_unweighted_l2 += sqrt(elem.h_t) * weighted_l2[i, 0]
+            err_unweighted_l2 += elem.h_x * weighted_l2[i, 1]
+        errs_unweighted_l2.append(sqrt(err_unweighted_l2))
+
         print('Error estimation of weighted residual took {}s'.format(
             time.time() - time_begin))
 
@@ -138,7 +148,7 @@ if __name__ == "__main__":
         sobolev = error_estimator.estimate_sobolev(elems,
                                                    residual,
                                                    use_mp=True)
-        print('Sobolev\t time: {}\t space: {}\t'.format(
+        print('\nSobolev\t time: {}\t space: {}\t'.format(
             np.sum(sobolev[:, 0]), np.sum(sobolev[:, 1])))
         np.save('data/sobolev_{}_{}.npy'.format(N, md5), sobolev)
         errs_slo.append(np.sqrt(np.sum(sobolev)))
@@ -147,14 +157,19 @@ if __name__ == "__main__":
                                                                   time_begin))
 
         if k:
-            rates_estim = np.log(
-                np.array(errs_estim[1:]) / np.array(errs_estim[:-1])) / np.log(
+            rates_unweighted_l2 = np.log(
+                np.array(errs_unweighted_l2[1:]) /
+                np.array(errs_unweighted_l2[:-1])) / np.log(
+                    np.array(dofs[1:]) / np.array(dofs[:-1]))
+            rates_weighted_l2 = np.log(
+                np.array(errs_weighted_l2[1:]) /
+                np.array(errs_weighted_l2[:-1])) / np.log(
                     np.array(dofs[1:]) / np.array(dofs[:-1]))
             rates_slo = np.log(
                 np.array(errs_slo[1:]) / np.array(errs_slo[:-1])) / np.log(
                     np.array(dofs[1:]) / np.array(dofs[:-1]))
-            rates_l2 = np.log(
-                np.array(errs_l2[1:]) / np.array(errs_l2[:-1])) / np.log(
+            rates_trace = np.log(
+                np.array(errs_trace[1:]) / np.array(errs_trace[:-1])) / np.log(
                     np.array(dofs[1:]) / np.array(dofs[:-1]))
             rates_hierch = np.log(
                 np.array(errs_hierch[1:]) /
@@ -162,13 +177,15 @@ if __name__ == "__main__":
                     np.array(dofs[1:]) / np.array(dofs[:-1]))
         else:
             rates_slo = []
-            rates_l2 = []
+            rates_trace = []
             rates_hierch = []
-            rates_estim = []
+            rates_weighted_l2 = []
+            rates_unweighted_l2 = []
 
         print(
-            '\ndofs={}\nerrs_l2={}\nerr_hierch={}\nerr_estim={}\nerrs_slo={}\n\nrates_l2={}\nrates_hierch={}\nrates_estim={}\nrates_slo={}\n------'
-            .format(dofs, errs_l2, errs_hierch, errs_estim, errs_slo, rates_l2,
-                    rates_hierch, rates_estim, rates_slo))
+            '\ndofs={}\nerrs_trace={}\nerr_hierch={}\nerr_unweighted_l2={}\nerr_weighted_l2={}\nerrs_slo={}\n\nrates_trace={}\nrates_hierch={}\nrates_unweighted_l2={}\nrates_weighted_l2={}\nrates_slo={}\n------'
+            .format(dofs, errs_trace, errs_hierch, errs_unweighted_l2,
+                    errs_weighted_l2, errs_slo, rates_trace, rates_hierch,
+                    rates_unweighted_l2, rates_weighted_l2, rates_slo))
         mesh.dorfler_refine_isotropic(np.sum(hierarch, axis=1), theta)
         #mesh.dorfler_refine_anisotropic(sobolev, theta)
