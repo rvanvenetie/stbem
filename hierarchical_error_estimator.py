@@ -71,13 +71,17 @@ class HierarchicalErrorEstimator:
         rhs = -self.M0.linform_vector(
             elems=elems_fine, cache_dir='data', use_mp=True)
 
-        estim = np.zeros(len(elems_coarse))
+        estims = []
         for i, elem_coarse in enumerate(elems_coarse):
             S = self.SL.bilform_matrix(elem_2_children[i], elem_2_children[i])
             children = [elem_2_idx_fine[elem] for elem in elem_2_children[i]]
             #scaling = sum(mat[j, i] for j in children)
 
             estim_loc = np.zeros(3)
+
+            # Estimator 1 -- Refinement in time.
+            # Estimator 2 -- Refinement in space.
+            # Estimator 3 -- Refinement in time + space.
             for k, coefs in enumerate([[1, 1, -1, -1], [1, -1, 1, -1],
                                        [1, -1, -1, 1]]):
                 rhs_estim = 0
@@ -88,6 +92,8 @@ class HierarchicalErrorEstimator:
                 coefs = np.array(coefs)
                 scaling_estim = coefs @ (S @ coefs.T)
                 estim_loc[k] = abs(rhs_estim - V_estim)**2 / scaling_estim
-            estim[i] = np.sum(estim_loc)
 
-        return np.sqrt(np.sum(estim)), estim
+            estims.append((estim_loc[0] + 0.5 * estim_loc[2],
+                           estim_loc[1] + 0.5 * estim_loc[2]))
+
+        return np.array(estims)
