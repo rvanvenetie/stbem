@@ -15,12 +15,18 @@ def MP_estim_l2(i):
     return __error_estimator.weighted_l2(__elems[i], __residual)
 
 
-def MP_estim_sobolev(i):
+def MP_estim_sobolev_time(i):
     global __elems, __error_estimator, __residual
-    return __error_estimator.sobolev_time(
-        __elems[i], __residual,
-        nbrs_symmetry=True), __error_estimator.sobolev_space(
-            __elems[i], __residual, nbrs_symmetry=True)
+    return __error_estimator.sobolev_time(__elems[i],
+                                          __residual,
+                                          nbrs_symmetry=True)
+
+
+def MP_estim_sobolev_space(i):
+    global __elems, __error_estimator, __residual
+    return __error_estimator.sobolev_space(__elems[i],
+                                           __residual,
+                                           nbrs_symmetry=True)
 
 
 class ErrorEstimator:
@@ -197,7 +203,7 @@ class ErrorEstimator:
             globals()['__error_estimator'] = self
             cpu = mp.cpu_count()
             weighted_l2 = list(
-                mp.Pool(cpu).map(MP_estim_l2, range(N), N // (16 * cpu) + 1))
+                mp.Pool(cpu).map(MP_estim_l2, range(N), N // (8 * cpu) + 1))
 
         weighted_l2 = np.array(weighted_l2)
         return weighted_l2
@@ -220,12 +226,11 @@ class ErrorEstimator:
             globals()['__error_estimator'] = self
             cpu = mp.cpu_count()
             with mp.Pool(cpu) as p:
-                sobolev = list(
-                    p.map(MP_estim_sobolev, range(N), N // (cpu * 8) + 1))
-                #sobolev_space = list(
-                #    p.map(MP_estim_sobolev_space, range(N),
-                #          N // (cpu * 8) + 1))
-                sobolev_time, sobolev_space = list(zip(*sobolev))
+                sobolev_time = list(
+                    p.map(MP_estim_sobolev_time, range(N), N // (cpu * 8) + 1))
+                sobolev_space = list(
+                    p.map(MP_estim_sobolev_space, range(N),
+                          N // (cpu * 8) + 1))
 
         # Silly code to correctly sum everything up, abuses symmetry
         # for speedup of factor 2.
