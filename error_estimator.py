@@ -180,13 +180,11 @@ class ErrorEstimator:
             assert len(t) == len(x_hat)
             x = gamma(x_hat)
             result = np.zeros(len(t))
-            t_max = np.max(t)
-            elems_filtered = [(i, elems[i]) for i in range(len(elems))
-                              if t_max > elems[i].time_interval[0]]
             for i, (t, x_hat, x) in enumerate(zip(t, x_hat, x.T)):
                 # Evaluate the SL for our trial function.
                 VPhi = 0
-                for j, elem_trial in elems_filtered:
+                for j, elem_trial in enumerate(elems):
+                    if t <= elem_trial.time_interval[0]: continue
                     if elem_trial.gamma_space is gamma:
                         VPhi += Phi[j] * SL.evaluate_pw(elem_trial, t, x_hat)
                     else:
