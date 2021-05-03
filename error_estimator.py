@@ -202,7 +202,7 @@ class ErrorEstimator:
             globals()['__elems'] = elems
             globals()['__error_estimator'] = self
             cpu = mp.cpu_count()
-            weighted_l2 = list(mp.Pool(cpu).map(MP_estim_l2, range(N), 10))
+            weighted_l2 = list(mp.Pool(cpu).map(MP_estim_l2, range(N)))
 
         weighted_l2 = np.array(weighted_l2)
         return weighted_l2
@@ -224,10 +224,9 @@ class ErrorEstimator:
             globals()['__elems'] = elems
             globals()['__error_estimator'] = self
             cpu = mp.cpu_count()
-            sobolev_time = list(
-                mp.Pool(cpu).map(MP_estim_sobolev_time, range(N), 10))
-            sobolev_space = list(
-                mp.Pool(cpu).map(MP_estim_sobolev_space, range(N), 10))
+            with mp.Pool(cpu) as p:
+                sobolev_time = list(p.map(MP_estim_sobolev_time, range(N)))
+                sobolev_space = list(p.map(MP_estim_sobolev_space, range(N)))
 
         # Silly code to correctly sum everything up, abuses symmetry
         # for speedup of factor 2.

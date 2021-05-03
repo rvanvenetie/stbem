@@ -170,8 +170,8 @@ class InitialOperator:
             # Set up global variables for parallelizing.
             globals()['__elems'] = elems
             globals()['__M0'] = self
-            vec = np.array(
-                mp.Pool(mp.cpu_count()).map(MP_M0_val, range(N), 10))
+            cpu = mp.cpu_count()
+            vec = np.array(mp.Pool(cpu).map(MP_M0_val, range(N)))
 
         print('Calculating initial potential took {}s'.format(time.time() -
                                                               time_rhs_begin))
