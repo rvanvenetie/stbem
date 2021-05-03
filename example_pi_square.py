@@ -61,7 +61,7 @@ if __name__ == "__main__":
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
                          initial_mesh=PiSquareBoundaryRefined)
-    SL = SingleLayerOperator(mesh)
+    SL = SingleLayerOperator(mesh, N_poly=(5, 1, 5))
 
     dofs = []
     errs_trace = []
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     errs_weighted_l2 = []
     errs_slo = []
     errs_hierch = []
-    error_estimator = ErrorEstimator(mesh, N_poly=7)
+    error_estimator = ErrorEstimator(mesh)
     hierarch_error_estimator = HierarchicalErrorEstimator(SL=SL, M0=M0)
 
     for k in range(100):

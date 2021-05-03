@@ -32,11 +32,15 @@ def MP_estim_sobolev_space(i):
 class ErrorEstimator:
     def __init__(self, mesh, N_poly=5):
         assert mesh.glue_space
-        self.gamma_len = mesh.gamma_space.gamma_length
+        if not isinstance(N_poly, tuple):
+            N_poly = (N_poly, N_poly, N_poly)
+        N_weighted_l2, N_slobo_outer, N_slobo_inner = N_poly
 
-        self.gauss = gauss_quadrature_scheme(N_poly)
-        self.gauss_2d = ProductScheme2D(self.gauss)
-        self.slobodeckij = Slobodeckij(N_poly)
+        self.gamma_len = mesh.gamma_space.gamma_length
+        self.gauss_2d = ProductScheme2D(gauss_quadrature_scheme(N_weighted_l2))
+
+        self.gauss = gauss_quadrature_scheme(N_slobo_outer)
+        self.slobodeckij = Slobodeckij(N_slobo_inner)
 
     def __integrate_h_1_2(self, residual, t_a, t_b, elem_left, elem_right):
         val = np.zeros(self.gauss.weights.shape)
