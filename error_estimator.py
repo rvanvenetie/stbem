@@ -124,7 +124,7 @@ class ErrorEstimator:
             ips.append((time_nbr.glob_idx,
                         self.__integrate_h_1_2(residual, t_a, t_b, elem_left,
                                                elem_right)))
-        assert len(ips) >= 2
+        assert len(ips) >= 1
         return math.fsum([val for elem, val in ips]), ips
 
     def sobolev_time(self, elem, residual, nbrs_symmetry=False):
@@ -156,7 +156,7 @@ class ErrorEstimator:
                         self.__integrate_h_1_4(residual, t_a, t_b, x_a, x_b,
                                                elem.gamma_space)))
 
-        assert len(ips) >= 2
+        assert len(ips) >= 1
         return math.fsum([val for elem, val in ips]), ips
 
     def weighted_l2(self, elem, residual):
