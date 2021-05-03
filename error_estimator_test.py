@@ -113,6 +113,7 @@ def test_error_estimator_slo():
     space_cache = {}
     time_cache = {}
     elems = list(mesh.leaf_elements)
+    idx_2_elem = {elem.glob_idx: elem for i, elem in enumerate(elems)}
     for elem in mesh.leaf_elements:
         err, ips = error_estimator.sobolev_space(elem, residual)
         for elem_nbr, val in ips:
@@ -121,6 +122,7 @@ def test_error_estimator_slo():
                 assert val == space_cache[elem_nbr, elem]
 
             space_cache[elem, elem_nbr] = val
+            elem_nbr = idx_2_elem[elem_nbr]
             t_a = max(elem.time_interval[0], elem_nbr.time_interval[0])
             t_b = min(elem.time_interval[1], elem_nbr.time_interval[1])
             assert t_a < t_b
@@ -138,6 +140,7 @@ def test_error_estimator_slo():
             if (elem_nbr, elem) in time_cache:
                 assert val == time_cache[elem_nbr, elem]
             time_cache[elem, elem_nbr] = val
+            elem_nbr = idx_2_elem[elem_nbr]
 
             # Intersection
             x_a = max(elem.space_interval[0], elem_nbr.space_interval[0])
@@ -150,3 +153,28 @@ def test_error_estimator_slo():
                 val_exact = -(8 / 45) * (x_a**3 - x_b**3) * (
                     elem.h_t + elem_nbr.h_t)**(5 / 2)
                 assert val == approx(val_exact, abs=0, rel=1e-10)
+
+
+def test_error_estimator_symmetry():
+    mesh = MeshParametrized(UnitSquare())
+    random.seed(5)
+    for _ in range(300):
+        elem = random.choice(list(mesh.leaf_elements))
+        mesh.refine_axis(elem, random.random() < 0.5)
+
+    elems = list(mesh.leaf_elements)
+
+    def residual(t, x_hat, x):
+        return t * np.cos(np.pi * x[0]) * np.sin(np.pi * x[1])
+
+    error_estimator = ErrorEstimator(mesh, N_poly=5)
+    space_cache = {}
+    time_cache = {}
+
+    mp.set_start_method('fork')
+    errs = error_estimator.estimate_sobolev(elems, residual, use_mp=True)
+    for i, elem in enumerate(mesh.leaf_elements):
+        err_time, _ = error_estimator.sobolev_time(elem, residual)
+        err_space, _ = error_estimator.sobolev_space(elem, residual)
+        assert err_time == approx(errs[i, 0], abs=0, rel=1e-15)
+        assert err_space == approx(errs[i, 1], abs=0, rel=1e-15)

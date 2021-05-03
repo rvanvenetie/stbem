@@ -15,9 +15,18 @@ def MP_estim_l2(i):
     return __error_estimator.weighted_l2(__elems[i], __residual)
 
 
-def MP_estim_sobolev(i):
+def MP_estim_sobolev_time(i):
     global __elems, __error_estimator, __residual
-    return __error_estimator.sobolev(__elems[i], __residual)
+    return __error_estimator.sobolev_time(__elems[i],
+                                          __residual,
+                                          nbrs_symmetry=True)
+
+
+def MP_estim_sobolev_space(i):
+    global __elems, __error_estimator, __residual
+    return __error_estimator.sobolev_space(__elems[i],
+                                           __residual,
+                                           nbrs_symmetry=True)
 
 
 class ErrorEstimator:
@@ -75,7 +84,7 @@ class ErrorEstimator:
         approx = h_x * np.dot(val, self.gauss.weights)
         return approx
 
-    def sobolev_space(self, elem, residual):
+    def sobolev_space(self, elem, residual, nbrs_symmetry=False):
         """ This calculates the sobolev space error estimator.
             
         That is, for every neighbour along a time axis, we evaluate
@@ -87,6 +96,9 @@ class ErrorEstimator:
 
         ips = []
         for time_nbr in time_neighbours:
+            # If we use neighbour symmetry, we only evaluate this comb. once!
+            if nbrs_symmetry and elem.glob_idx > time_nbr.glob_idx: continue
+
             t_a = max(time_nbr.time_interval[0], elem.time_interval[0])
             t_b = min(time_nbr.time_interval[1], elem.time_interval[1])
             assert t_a < t_b
@@ -111,12 +123,12 @@ class ErrorEstimator:
                 elem_left = elem
                 elem_right = None
 
-            ips.append((time_nbr,
+            ips.append((time_nbr.glob_idx,
                         self.__integrate_h_1_2(residual, t_a, t_b, elem_left,
                                                elem_right)))
         return math.fsum([val for elem, val in ips]), ips
 
-    def sobolev_time(self, elem, residual):
+    def sobolev_time(self, elem, residual, nbrs_symmetry=False):
         """ This calculates the sobolev time error estimator. 
 
             That is, for every neighbour along a space axis, we evaluate
@@ -128,6 +140,9 @@ class ErrorEstimator:
 
         ips = []
         for space_nbr in space_neighbours:
+            # If we use neighbour symmetry, we only evaluate this comb. once!
+            if nbrs_symmetry and elem.glob_idx > space_nbr.glob_idx: continue
+
             assert elem.gamma_space == space_nbr.gamma_space
             # Intersection.
             x_a = max(space_nbr.space_interval[0], elem.space_interval[0])
@@ -138,7 +153,7 @@ class ErrorEstimator:
             t_a = min(space_nbr.time_interval[0], elem.time_interval[0])
             t_b = max(space_nbr.time_interval[1], elem.time_interval[1])
 
-            ips.append((space_nbr,
+            ips.append((space_nbr.glob_idx,
                         self.__integrate_h_1_4(residual, t_a, t_b, x_a, x_b,
                                                elem.gamma_space)))
         return math.fsum([val for elem, val in ips]), ips
@@ -156,10 +171,6 @@ class ErrorEstimator:
 
         # Return the weighted l2 norm.
         return elem.h_t**(-1 / 2) * res_l2, elem.h_x**(-1) * res_l2
-
-    def sobolev(self, elem, residual):
-        return self.sobolev_time(elem, residual)[0], self.sobolev_space(
-            elem, residual)[0]
 
     def residual(self, elems, Phi, SL, M0u0):
         """ Returns the residual function. """
@@ -191,24 +202,50 @@ class ErrorEstimator:
             globals()['__elems'] = elems
             globals()['__error_estimator'] = self
             cpu = mp.cpu_count()
-            weighted_l2 = list(mp.Pool(cpu).map(MP_estim_l2, range(N)))
+            weighted_l2 = list(
+                mp.Pool(cpu).map(MP_estim_l2, range(N), N // (8 * cpu) + 1))
 
         weighted_l2 = np.array(weighted_l2)
         return weighted_l2
 
     def estimate_sobolev(self, elems, residual, use_mp=False):
         """ Returns the error estimator for given function Phi. """
+        N = len(elems)
         if not use_mp:
-            sobolev = [self.sobolev(elem, residual) for elem in elems]
+            sobolev_time = [
+                self.sobolev_time(elem, residual, nbrs_symmetry=True)
+                for elem in elems
+            ]
+            sobolev_space = [
+                self.sobolev_space(elem, residual, nbrs_symmetry=True)
+                for elem in elems
+            ]
         else:
-            N = len(elems)
             globals()['__residual'] = residual
             globals()['__elems'] = elems
             globals()['__error_estimator'] = self
             cpu = mp.cpu_count()
-            sobolev = list(mp.Pool(cpu).map(MP_estim_sobolev, range(N)))
+            with mp.Pool(cpu) as p:
+                sobolev_time = list(
+                    p.map(MP_estim_sobolev_time, range(N), N // (cpu * 8) + 1))
+                sobolev_space = list(
+                    p.map(MP_estim_sobolev_space, range(N),
+                          N // (cpu * 8) + 1))
 
-        sobolev = np.array(sobolev)
+        # Silly code to correctly sum everything up, abuses symmetry
+        # for speedup of factor 2.
+        glob_2_loc = {elem.glob_idx: i for i, elem in enumerate(elems)}
+        sobolev = np.zeros((N, 2))
+        for i, elem in zip(range(N), elems):
+            sobolev[i, 0] += sobolev_time[i][0]
+            for elem_nbr, val_nbr in sobolev_time[i][1]:
+                if elem.glob_idx < elem_nbr:
+                    sobolev[glob_2_loc[elem_nbr], 0] += val_nbr
+            sobolev[i, 1] += sobolev_space[i][0]
+            for elem_nbr, val_nbr in sobolev_space[i][1]:
+                if elem.glob_idx < elem_nbr:
+                    sobolev[glob_2_loc[elem_nbr], 1] += val_nbr
+
         return sobolev
 
 
