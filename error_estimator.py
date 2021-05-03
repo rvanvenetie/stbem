@@ -229,7 +229,8 @@ class ErrorEstimator:
             sobolev_space = list(
                 mp.Pool(cpu).map(MP_estim_sobolev_space, range(N), 10))
 
-        # Silly code to correctly sum everything up.
+        # Silly code to correctly sum everything up, abuses symmetry
+        # for speedup of factor 2.
         glob_2_loc = {elem.glob_idx: i for i, elem in enumerate(elems)}
         sobolev = np.zeros((N, 2))
         for i, elem in zip(range(N), elems):
