@@ -15,18 +15,12 @@ def MP_estim_l2(i):
     return __error_estimator.weighted_l2(__elems[i], __residual)
 
 
-def MP_estim_sobolev_time(i):
+def MP_estim_sobolev(i):
     global __elems, __error_estimator, __residual
-    return __error_estimator.sobolev_time(__elems[i],
-                                          __residual,
-                                          nbrs_symmetry=True)
-
-
-def MP_estim_sobolev_space(i):
-    global __elems, __error_estimator, __residual
-    return __error_estimator.sobolev_space(__elems[i],
-                                           __residual,
-                                           nbrs_symmetry=True)
+    return __error_estimator.sobolev_time(
+        __elems[i], __residual,
+        nbrs_symmetry=True), __error_estimator.sobolev_space(
+            __elems[i], __residual, nbrs_symmetry=True)
 
 
 class ErrorEstimator:
@@ -226,11 +220,12 @@ class ErrorEstimator:
             globals()['__error_estimator'] = self
             cpu = mp.cpu_count()
             with mp.Pool(cpu) as p:
-                sobolev_time = list(
-                    p.map(MP_estim_sobolev_time, range(N), N // (cpu * 8) + 1))
-                sobolev_space = list(
-                    p.map(MP_estim_sobolev_space, range(N),
-                          N // (cpu * 8) + 1))
+                sobolev = list(
+                    p.map(MP_estim_sobolev, range(N), N // (cpu * 8) + 1))
+                #sobolev_space = list(
+                #    p.map(MP_estim_sobolev_space, range(N),
+                #          N // (cpu * 8) + 1))
+                sobolev_time, sobolev_space = list(zip(*sobolev))
 
         # Silly code to correctly sum everything up, abuses symmetry
         # for speedup of factor 2.
