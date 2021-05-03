@@ -155,9 +155,8 @@ class Element:
         return (self.edges[1 - ax], self.edges[3 - ax])
 
     def __repr__(self):
-        return "Elem(i={},t={}, x={})".format(self.glob_idx,
-                                              self.time_interval,
-                                              self.space_interval)
+        return "Elem(t={}, x={})".format(self.time_interval,
+                                         self.space_interval)
 
 
 class Mesh:
