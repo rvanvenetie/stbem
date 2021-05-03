@@ -170,5 +170,5 @@ if __name__ == "__main__":
             '\ndofs={}\nerrs_l2={}\nerr_hierch={}\nerr_estim={}\nerrs_slo={}\n\nrates_l2={}\nrates_hierch={}\nrates_estim={}\nrates_slo={}\n------'
             .format(dofs, errs_l2, errs_hierch, errs_estim, errs_slo, rates_l2,
                     rates_hierch, rates_estim, rates_slo))
-        #mesh.dorfler_refine_isotropic(np.sum(sobolev, axis=1), theta)
-        mesh.dorfler_refine_anisotropic(sobolev, theta)
+        mesh.dorfler_refine_isotropic(np.sum(hierarch, axis=1), theta)
+        #mesh.dorfler_refine_anisotropic(sobolev, theta)
