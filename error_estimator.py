@@ -225,8 +225,11 @@ class ErrorEstimator:
             globals()['__error_estimator'] = self
             cpu = mp.cpu_count()
             with mp.Pool(cpu) as p:
-                sobolev_time = list(p.map(MP_estim_sobolev_time, range(N)))
-                sobolev_space = list(p.map(MP_estim_sobolev_space, range(N)))
+                sobolev_time = list(
+                    p.map(MP_estim_sobolev_time, range(N), N // (cpu * 8) + 1))
+                sobolev_space = list(
+                    p.map(MP_estim_sobolev_space, range(N),
+                          N // (cpu * 8) + 1))
 
         # Silly code to correctly sum everything up, abuses symmetry
         # for speedup of factor 2.
