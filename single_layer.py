@@ -270,9 +270,10 @@ class SingleLayerOperator:
             globals()['__elems_test'] = elems_test
             globals()['__elems_trial'] = elems_trial
             globals()['__SL'] = self
+            cpu = mp.cpu_count()
             for j, col in enumerate(
                     mp.Pool(mp.cpu_count()).imap(MP_SL_matrix_col, range(M),
-                                                 10)):
+                                                 M // (16 * cpu) + 1)):
                 mat[:, j] = col
 
         if cache_dir is not None:
