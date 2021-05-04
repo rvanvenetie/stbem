@@ -93,12 +93,15 @@ if __name__ == "__main__":
         residual = error_estimator.residual(elems, Phi, SL, M0u0)
 
         time_begin = time.time()
-        weighted_l2 = error_estimator.estimate_weighted_l2(elems,
-                                                           residual,
-                                                           use_mp=True)
-        print('\nWeighted L2\t time: {}\t space: {}\t'.format(
-            np.sum(weighted_l2[:, 0]), np.sum(weighted_l2[:, 1])))
-        np.save('data/weighted_l2_{}_{}.npy'.format(N, md5), weighted_l2)
+        try:
+            weighted_l2 = np.load('data/weighted_l2_{}_{}.npy'.format(N, md5))
+        except:
+            weighted_l2 = error_estimator.estimate_weighted_l2(elems,
+                                                               residual,
+                                                               use_mp=True)
+            print('\nWeighted L2\t time: {}\t space: {}\t'.format(
+                np.sum(weighted_l2[:, 0]), np.sum(weighted_l2[:, 1])))
+            np.save('data/weighted_l2_{}_{}.npy'.format(N, md5), weighted_l2)
         errs_weighted_l2.append(np.sqrt(np.sum(weighted_l2)))
 
         # Calculate the _unweighted_ l2 error.
@@ -112,12 +115,15 @@ if __name__ == "__main__":
             time.time() - time_begin))
 
         time_begin = time.time()
-        sobolev = error_estimator.estimate_sobolev(elems,
-                                                   residual,
-                                                   use_mp=True)
-        print('\nSobolev\t time: {}\t space: {}\t'.format(
-            np.sum(sobolev[:, 0]), np.sum(sobolev[:, 1])))
-        np.save('data/sobolev_{}_{}.npy'.format(N, md5), sobolev)
+        try:
+            sobolev = np.load('data/sobolev_{}_{}.npy'.format(N, md5))
+        except:
+            sobolev = error_estimator.estimate_sobolev(elems,
+                                                       residual,
+                                                       use_mp=True)
+            print('\nSobolev\t time: {}\t space: {}\t'.format(
+                np.sum(sobolev[:, 0]), np.sum(sobolev[:, 1])))
+            np.save('data/sobolev_{}_{}.npy'.format(N, md5), sobolev)
         errs_slo.append(np.sqrt(np.sum(sobolev)))
         print(
             'Error estimation of Slobodeckij normtook {}s'.format(time.time() -
