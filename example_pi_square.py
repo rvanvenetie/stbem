@@ -69,8 +69,9 @@ if __name__ == "__main__":
     errs_weighted_l2 = []
     errs_slo = []
     errs_hierch = []
-    error_estimator = ErrorEstimator(mesh, N_poly=(5, 1, 5))
+    error_estimator = ErrorEstimator(mesh, N_poly=(5, 3, 5))
     hierarch_error_estimator = HierarchicalErrorEstimator(SL=SL, M0=M0)
+    np.seterr(all='raise')
 
     for k in range(100):
         elems = list(mesh.leaf_elements)
@@ -183,6 +184,6 @@ if __name__ == "__main__":
             .format(dofs, errs_trace, errs_hierch, errs_unweighted_l2,
                     errs_weighted_l2, errs_slo, rates_trace, rates_hierch,
                     rates_unweighted_l2, rates_weighted_l2, rates_slo))
-        mesh.uniform_refine()
+        #mesh.uniform_refine()
         #mesh.dorfler_refine_isotropic(np.sum(hierarch, axis=1), theta)
-        #mesh.dorfler_refine_anisotropic(sobolev, theta)
+        mesh.dorfler_refine_anisotropic(sobolev, theta)
