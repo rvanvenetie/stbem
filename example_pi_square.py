@@ -1,17 +1,26 @@
 import numpy as np
-from pytest import approx
+from math import sqrt
+from copy import deepcopy
+from mesh import Vertex, Element
+import multiprocessing as mp
+import os
+from mesh import Prolongate
 from scipy.special import erf, erfc
+from pytest import approx
 import matplotlib.pyplot as plt
 import math
 from mesh import Mesh, MeshParametrized
 from initial_potential import InitialOperator
-from initial_mesh import UnitSquareBoundaryRefined, PiSquareBoundaryRefined
+from initial_mesh import PiSquareBoundaryRefined
 import initial_mesh
 from single_layer import SingleLayerOperator
 import time
-from parametrization import Circle, UnitSquare, PiSquare, LShape
-from quadrature import gauss_quadrature_scheme, ProductScheme2D
+from parametrization import Circle, PiSquare, LShape
+from quadrature import log_log_quadrature_scheme, log_quadrature_scheme, gauss_quadrature_scheme, ProductScheme2D, QuadScheme2D, QuadpyScheme2D
 import quadpy
+import hashlib
+from error_estimator import ErrorEstimator
+from hierarchical_error_estimator import HierarchicalErrorEstimator
 
 
 def u(t, xy):
@@ -42,163 +51,139 @@ def u_neumann(t, x_hat):
     return -np.exp(-2 * t) * np.sin((x_hat % np.pi))
 
 
-mesh = MeshParametrized(PiSquare())
-M0 = InitialOperator(bdr_mesh=mesh,
-                     u0=u0,
-                     initial_mesh=PiSquareBoundaryRefined)
+if __name__ == "__main__":
+    N_procs = mp.cpu_count()
+    mp.set_start_method('fork')
+    print('Running parallel with {} threads.'.format(N_procs))
 
-dofs = []
-errs_l2 = []
-errs_estim = []
-for k in range(10):
-    elems_cur = list(mesh.leaf_elements)
-    N = len(elems_cur)
-    print('Loop with {} dofs'.format(N))
+    mesh = MeshParametrized(PiSquare())
+    theta = 0.7
+    M0 = InitialOperator(bdr_mesh=mesh,
+                         u0=u0,
+                         initial_mesh=PiSquareBoundaryRefined)
     SL = SingleLayerOperator(mesh)
-    dofs.append(N)
 
-    #time_mat_begin = time.time()
-    #mat = SL.bilform_matrix(cache_dir='data')
-    #print('Calculating matrix took {}s'.format(time.time() - time_mat_begin))
+    dofs = []
+    errs_trace = []
+    errs_unweighted_l2 = []
+    errs_weighted_l2 = []
+    errs_slo = []
+    errs_hierch = []
+    error_estimator = ErrorEstimator(mesh, N_poly=(5, 3, 5))
+    hierarch_error_estimator = HierarchicalErrorEstimator(SL=SL, M0=M0)
+    np.seterr(all='raise')
 
-    cache_SL_fn = "{}/SL_PI_dofs_{}_{}.npy".format('data', N, mesh.md5())
-    try:
-        mat = np.load(cache_SL_fn)
-        print("Loaded Single Layer from file {}".format(cache_SL_fn))
-    except:
-        calc_dict = {}
-        time_mat_begin = time.time()
-        mat = np.zeros((N, N))
-        for i, elem_test in enumerate(elems_cur):
-            for j, elem_trial in enumerate(elems_cur):
-                if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
-                    continue
-                a, _, b, _ = *elem_test.time_interval, *elem_trial.time_interval
-                c, _, d, _ = *elem_test.space_interval, *elem_trial.space_interval
-                tup = (a - b, c, d)
-                if not tup in calc_dict:
-                    calc_dict[tup] = SL.bilform(elem_trial, elem_test)
+    for k in range(100):
+        elems = list(mesh.leaf_elements)
+        N = len(mesh.leaf_elements)
+        md5 = hashlib.md5(
+            (str(mesh.gamma_space) + str(elems)).encode()).hexdigest()
+        print('Loop with {} dofs'.format(N))
+        print(mesh.gmsh(use_gamma=True),
+              file=open(
+                  "./data/adaptive_{}_{}_{}.gmsh".format(
+                      mesh.gamma_space, N, mesh.md5()), "w"))
+        dofs.append(N)
 
-                mat[i, j] = calc_dict[tup]
-        try:
-            np.save(cache_SL_fn, mat)
-            print("Stored Single Layer to {}".format(cache_SL_fn))
-        except:
-            pass
-        print('Calculating matrix fast took {}s'.format(time.time() -
-                                                        time_mat_begin))
+        # Calculate SL matrix.
+        mat = SL.bilform_matrix(elems, elems, cache_dir='data', use_mp=True)
 
-    # Calculate initial potential.
-    time_rhs_begin = time.time()
-    cache_M0_fn = "{}/M0_pi_dofs_{}_{}.npy".format('data', N, mesh.md5())
-    try:
-        M0_u0 = np.load(cache_M0_fn)
-        print("Loaded Initial Operator from file {}".format(cache_M0_fn))
-    except:
-        calc_dict = {}
-        M0_u0 = np.zeros(shape=N)
-        for j, elem_test in enumerate(elems_cur):
-            #a = elem_test.space_interval[0] - math.floor(
-            #    elem_test.space_interval[0])
-            #tup = (elem_test.time_interval[0], a)
-            ##if not tup in calc_dict:
-            #if True:
-            #    calc_dict[tup] = M0.linform(elem_test)
-            M0_u0[j], _ = M0.linform(elem_test)
-        np.save(cache_M0_fn, M0_u0)
-        print('Calculating initial potential took {}s'.format(time.time() -
-                                                              time_rhs_begin))
-        print("Stored Initial Operator to {}".format(cache_M0_fn))
+        # Calculate initial potential.
+        rhs = -M0.linform_vector(elems=elems, cache_dir='data', use_mp=True)
 
-    # Solve.
-    time_solve_begin = time.time()
-    Phi_cur = np.linalg.solve(mat, -M0_u0)
-    print('Solving matrix took {}s'.format(time.time() - time_solve_begin))
+        # Solve.
+        time_solve_begin = time.time()
+        Phi = np.linalg.solve(mat, rhs)
+        print('Solving matrix took {}s'.format(time.time() - time_solve_begin))
 
-    # Check symmetry of the solution.
-    calc_dict = {}
-    for i, elem in enumerate(elems_cur):
-        t = elem.vertices[0].t
-        x = elem.vertices[0].x % np.pi
-        if not (t, x) in calc_dict:
-            calc_dict[t, x] = Phi_cur[i]
+        # Estimate the l2 error of the neumann trace.
+        time_trace_begin = time.time()
+        gauss_2d = ProductScheme2D(gauss_quadrature_scheme(11))
+        err_trace = []
+        for i, elem in enumerate(elems):
+            err = lambda tx: (Phi[i] - u_neumann(tx[0], tx[1]))**2
+            err_trace.append(
+                gauss_2d.integrate(err, *elem.time_interval,
+                                   *elem.space_interval))
+        errs_trace.append(np.sqrt(math.fsum(err_trace)))
+        print('Error estimation of \Phi - \partial_n took {}s'.format(
+            time.time() - time_trace_begin))
+
+        # Do the hierarhical error estimator.
+        time_hierarch_begin = time.time()
+        hierarch = hierarch_error_estimator.estimate(elems, Phi)
+        print('\nHierarch\t time: {}\t space: {}\t'.format(
+            np.sum(hierarch[:, 0]), np.sum(hierarch[:, 1])))
+        np.save('data/hierarch_{}_{}.npy'.format(N, md5), hierarch)
+        errs_hierch.append(np.sqrt(np.sum(hierarch)))
+        print('Hierarchical error estimator took {}s'.format(
+            time.time() - time_hierarch_begin))
+
+        # Calculate the weighted l2 + sobolev error of the residual.
+        residual = error_estimator.residual(elems, Phi, SL, M0u0)
+
+        time_begin = time.time()
+        weighted_l2 = error_estimator.estimate_weighted_l2(elems,
+                                                           residual,
+                                                           use_mp=True)
+        print('\nWeighted L2\t time: {}\t space: {}\t'.format(
+            np.sum(weighted_l2[:, 0]), np.sum(weighted_l2[:, 1])))
+        np.save('data/weighted_l2_{}_{}.npy'.format(N, md5), weighted_l2)
+        errs_weighted_l2.append(np.sqrt(np.sum(weighted_l2)))
+
+        # Calculate the _unweighted_ l2 error.
+        err_unweighted_l2 = 0
+        for i, elem in enumerate(elems):
+            err_unweighted_l2 += sqrt(elem.h_t) * weighted_l2[i, 0]
+            err_unweighted_l2 += elem.h_x * weighted_l2[i, 1]
+        errs_unweighted_l2.append(sqrt(err_unweighted_l2))
+
+        print('Error estimation of weighted residual took {}s'.format(
+            time.time() - time_begin))
+
+        time_begin = time.time()
+        sobolev = error_estimator.estimate_sobolev(elems,
+                                                   residual,
+                                                   use_mp=True)
+        print('\nSobolev\t time: {}\t space: {}\t'.format(
+            np.sum(sobolev[:, 0]), np.sum(sobolev[:, 1])))
+        np.save('data/sobolev_{}_{}.npy'.format(N, md5), sobolev)
+        errs_slo.append(np.sqrt(np.sum(sobolev)))
+        print(
+            'Error estimation of Slobodeckij normtook {}s'.format(time.time() -
+                                                                  time_begin))
+
+        if k:
+            rates_unweighted_l2 = np.log(
+                np.array(errs_unweighted_l2[1:]) /
+                np.array(errs_unweighted_l2[:-1])) / np.log(
+                    np.array(dofs[1:]) / np.array(dofs[:-1]))
+            rates_weighted_l2 = np.log(
+                np.array(errs_weighted_l2[1:]) /
+                np.array(errs_weighted_l2[:-1])) / np.log(
+                    np.array(dofs[1:]) / np.array(dofs[:-1]))
+            rates_slo = np.log(
+                np.array(errs_slo[1:]) / np.array(errs_slo[:-1])) / np.log(
+                    np.array(dofs[1:]) / np.array(dofs[:-1]))
+            rates_trace = np.log(
+                np.array(errs_trace[1:]) / np.array(errs_trace[:-1])) / np.log(
+                    np.array(dofs[1:]) / np.array(dofs[:-1]))
+            rates_hierch = np.log(
+                np.array(errs_hierch[1:]) /
+                np.array(errs_hierch[:-1])) / np.log(
+                    np.array(dofs[1:]) / np.array(dofs[:-1]))
         else:
-            assert Phi_cur[i] == approx(calc_dict[t, x], abs=0, rel=1e-5)
+            rates_slo = []
+            rates_trace = []
+            rates_hierch = []
+            rates_weighted_l2 = []
+            rates_unweighted_l2 = []
 
-    # Estimate the l2 error of the neumann trace.
-    time_l2_begin = time.time()
-    gauss = gauss_quadrature_scheme(11)
-    gauss_2d = ProductScheme2D(gauss)
-    err_l2 = []
-    for i, elem in enumerate(elems_cur):
-        err = lambda tx: (Phi_cur[i] - u_neumann(tx[0], tx[1]))**2
-        err_l2.append(
-            gauss_2d.integrate(err, *elem.time_interval, *elem.space_interval))
-    err_l2 = np.sqrt(math.fsum(err_l2))
-    errs_l2.append(err_l2)
-    print(
-        'Error estimation of \Phi - \partial_n took {}s'.format(time.time() -
-                                                                time_l2_begin))
-
-    # Calculate the weighted l2 error of the residual.
-    err_estim_sqr = np.zeros(N)
-    mu = 1 / 2
-    nu = 1 / 4
-    err_order = 3
-    gauss_2d = ProductScheme2D(gauss_quadrature_scheme(err_order))
-    #quad_scheme = quadpy.get_good_scheme(3)
-    calc_dict = {}
-    for i, elem in enumerate(elems_cur):
-        # Evaluate the residual squared.
-        def residual_squared(tx):
-            result = np.zeros(tx.shape[1])
-            for i, (t, x_hat) in enumerate(zip(tx[0], tx[1])):
-                x = elem.gamma_space(x_hat)
-                # Evaluate the SL for our trial function.
-                VPhi = 0
-                for j, elem_trial in enumerate(elems_cur):
-                    VPhi += Phi_cur[j] * SL.evaluate(elem_trial, t, x_hat, x)
-
-                # Compare with rhs.
-                #result[i] = VPhi + M0.evaluate_mesh(t, x, initial_mesh)
-                result[i] = VPhi + M0u0(t, x)
-
-            return result**2
-
-        # Create initial mesh
-        #c, d = elem.space_interval
-        #initial_mesh = PiSquareBoundaryRefined(elem.gamma_space(c),
-        #                                       elem.gamma_space(d))
-
-        t = elem.vertices[0].t
-        x = elem.vertices[0].x % np.pi
-        if not (t, x) in calc_dict:
-            calc_dict[t, x] = (elem.h_x**(-1) +
-                               elem.h_t**(-0.5)) * gauss_2d.integrate(
-                                   residual_squared, *elem.time_interval, *
-                                   elem.space_interval)
-        err_estim_sqr[i] = calc_dict[t, x]
-
-    errs_estim.append(np.sqrt(np.sum(err_estim_sqr)))
-    print('Error estimation of weighted residual of order {} took {}s'.format(
-        err_order,
-        time.time() - time_l2_begin))
-
-    print('N={}\terr_estim={}'.format(N, errs_estim[-1]))
-    print('N={}\terr_l2={}'.format(N, errs_l2[-1]))
-
-    if k:
-        rates_estim = np.log(
-            np.array(errs_estim[1:]) / np.array(errs_estim[:-1])) / np.log(
-                np.array(dofs[1:]) / np.array(dofs[:-1]))
-        rates_l2 = np.log(
-            np.array(errs_l2[1:]) / np.array(errs_l2[:-1])) / np.log(
-                np.array(dofs[1:]) / np.array(dofs[:-1]))
-    else:
-        rates_estim = []
-        rates_l2 = []
-
-    print(
-        '\ndofs={}\nerrs_l2={}\nerr_estim={}\n\nrates_l2={}\nrates_estim={}\n------'
-        .format(dofs, errs_l2, errs_estim, rates_l2, rates_estim))
-    mesh.uniform_refine()
+        print(
+            '\ndofs={}\nerrs_trace={}\nerr_hierch={}\nerr_unweighted_l2={}\nerr_weighted_l2={}\nerrs_slo={}\n\nrates_trace={}\nrates_hierch={}\nrates_unweighted_l2={}\nrates_weighted_l2={}\nrates_slo={}\n------'
+            .format(dofs, errs_trace, errs_hierch, errs_unweighted_l2,
+                    errs_weighted_l2, errs_slo, rates_trace, rates_hierch,
+                    rates_unweighted_l2, rates_weighted_l2, rates_slo))
+        #mesh.uniform_refine()
+        #mesh.dorfler_refine_isotropic(np.sum(hierarch, axis=1), theta)
+        mesh.dorfler_refine_anisotropic(sobolev, theta)

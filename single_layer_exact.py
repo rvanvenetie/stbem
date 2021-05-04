@@ -211,6 +211,41 @@ def spacetime_integrated_kernel_4(a, b, c, d, h, k, l):
     return f_bd - f_bc + f_ca - f_da
 
 
+def spacetime_integrated_kernel(t_a, t_b, s_a, s_b, x_a, x_b, y_a, y_b):
+    """ Returns kernel integrated in time over [t_a, t_b] x [s_a, s_b],
+        and in space over [x_a, x_b] x [y_a, y_b]. """
+    if (y_a, y_b) < (x_a, x_b):
+        return spacetime_integrated_kernel(t_a, t_b, s_a, s_b, y_a, y_b, x_a,
+                                           x_b)
+    assert (x_a, x_b) <= (y_a, y_b)
+
+    # Disjoint.
+    if x_b < y_a:
+        return spacetime_integrated_kernel_4(t_a, t_b, s_a, s_b, x_b - x_a,
+                                             y_a - x_a, y_b - x_a)
+
+    # Same.
+    if x_a == y_a and x_b == y_b:
+        return spacetime_integrated_kernel_1(t_a, t_b, s_a, s_b, x_b - x_a)
+
+    # Touch.
+    if x_b == y_a:
+        return spacetime_integrated_kernel_2(t_a, t_b, s_a, s_b, x_b - x_a,
+                                             y_b - y_a)
+
+    # Split other cases.
+    if x_a < y_a:
+        return spacetime_integrated_kernel(t_a, t_b, s_a, s_b, x_a, y_a, y_a,
+                                           y_b) + spacetime_integrated_kernel(
+                                               t_a, t_b, s_a, s_b, y_a, x_b,
+                                               y_a, y_b)
+
+    assert x_a == y_a and x_b < y_b
+    return spacetime_integrated_kernel(
+        t_a, t_b, s_a, s_b, x_a, x_b, y_a, x_b) + spacetime_integrated_kernel(
+            t_a, t_b, s_a, s_b, x_a, x_b, x_b, y_b)
+
+
 #def spacetime_integrated_kernel(a, b, c, d, h, i, j, k):
 #    """ Returns kernel integrated in time over [a,b] x [c, d], and in space
 #    over [h,i] x [j,k]

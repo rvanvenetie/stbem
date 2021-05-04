@@ -577,3 +577,72 @@ def test_single_layer_refine():
                     print(elem_trial, elem_test, err, val, val_refined)
 
             assert val == approx(val_refined, abs=1e-50, rel=1e-10)
+
+
+def test_single_layer_refine_time():
+    gamma = UnitSquare()
+    mesh_trial = MeshParametrized(gamma)
+    SL = SingleLayerOperator(mesh_trial)
+
+    # Randomly refine the meshes
+    random.seed(5)
+    for _ in range(200):
+        elem_trial = [
+            elem for elem in mesh_trial.leaf_elements
+            if elem.time_interval[0] == 0. and elem.space_interval[0] == 2.
+        ]
+        mesh_trial.refine_time(*elem_trial)
+
+    elems_trial = list(mesh_trial.leaf_elements)
+    mesh_trial.uniform_refine()
+
+    print(len(elems_trial))
+
+    for elem_test in elems_trial:
+        elems_test_children = [
+            child for child_time in elem_test.children
+            for child in child_time.children
+        ]
+        for elem_trial in elems_trial:
+            elems_trial_children = [
+                child for child_time in elem_trial.children
+                for child in child_time.children
+            ]
+            val_refined = 0
+            for elem_test_child in elems_test_children:
+                for elem_trial_child in elems_trial_children:
+                    val_refined += SL.bilform(elem_trial_child,
+                                              elem_test_child)
+
+            val = SL.bilform(elem_trial, elem_test)
+            if val_refined != 0:
+                err = abs((val - val_refined) / val_refined)
+                if err > 1e-10 and val > 1e-35:
+                    print(elem_trial, elem_test, err, val, val_refined)
+
+            assert val == approx(val_refined, abs=1e-50, rel=1e-3)
+
+
+def test_single_layer_pw_exact():
+    gamma = UnitSquare()
+    mesh = MeshParametrized(gamma)
+
+    # Randomly refine this mesh.
+    random.seed(5)
+    for _ in range(200):
+        elem = random.choice(list(mesh.leaf_elements))
+        mesh.refine_axis(elem, random.random() < 0.5)
+
+    # We can exactly integrate the kernel if the space part coincides.
+    SL_exact = SingleLayerOperator(mesh, pw_exact=True)
+    SL_quad = SingleLayerOperator(mesh, pw_exact=False)
+    elems = list(mesh.leaf_elements)
+    for i, elem_test in enumerate(elems):
+        for j, elem_trial in enumerate(elems):
+            val_exact = SL_exact.bilform(elem_trial, elem_test)
+            val_quad = SL_quad.bilform(elem_trial, elem_test)
+            if val_exact == 0:
+                assert val_quad == 0
+                continue
+
+            assert abs((val_quad - val_exact) / val_exact) < 1e-8

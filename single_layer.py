@@ -1,5 +1,5 @@
 import numpy as np
-from single_layer_exact import spacetime_evaluated_1, spacetime_evaluated_2
+from single_layer_exact import spacetime_integrated_kernel, spacetime_evaluated_1, spacetime_evaluated_2
 import hashlib
 import time
 import multiprocessing as mp
@@ -105,7 +105,8 @@ def MP_SL_matrix_col(j):
 
 
 class SingleLayerOperator:
-    def __init__(self, mesh, quad_order=12):
+    def __init__(self, mesh, quad_order=12, pw_exact=False):
+        self.pw_exact = pw_exact
         self.gauss_scheme = gauss_quadrature_scheme(23)
         self.gauss_2d = ProductScheme2D(self.gauss_scheme)
         self.log_scheme = log_quadrature_scheme(quad_order, quad_order)
@@ -129,6 +130,7 @@ class SingleLayerOperator:
         """ Integrates a symmetric singular f over the square [a,b]x[c,d]. """
         h_x = b - a
         h_y = d - c
+        assert h_x > 1e-5 and h_y > 1e-5
         assert (a < b and c < d)
         assert (a, b) <= (c, d)
 
@@ -198,6 +200,12 @@ class SingleLayerOperator:
         # If the test element lies below the trial element, we are done.
         if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
             return 0
+
+        if self.pw_exact and elem_test.gamma_space is elem_trial.gamma_space:
+            return spacetime_integrated_kernel(*elem_test.time_interval,
+                                               *elem_trial.time_interval,
+                                               *elem_test.space_interval,
+                                               *elem_trial.space_interval)
 
         a, b, c, d = *elem_test.time_interval, *elem_trial.time_interval
 
@@ -314,7 +322,7 @@ class SingleLayerOperator:
         x_a, x_b = elem_trial.space_interval
 
         # Check if singularity lies in this element.
-        if x_a <= x_hat <= x_b:
+        if x_a * (1 + 1e-10) <= x_hat <= x_b * (1 - 1e-10):
             # Calculate the time integrated kernel.
             def G_time_parametrized(y_hat):
                 xy = (x - elem_trial.gamma_space(y_hat))**2

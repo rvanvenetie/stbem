@@ -82,6 +82,7 @@ class QuadScheme1D:
 
     def integrate(self, f, a, b):
         if a == b: return 0
+        assert b - a > 1e-5
         fx = (b - a) * np.asarray(f(a + (b - a) * self.points))
         return np.dot(fx, self.weights)
 
@@ -107,6 +108,7 @@ class QuadScheme2D:
         return self._mirror_y
 
     def integrate(self, f, a, b, c, d):
+        assert b - a > 1e-5 and d - c > 1e-5
         x = np.array(
             [a + (b - a) * self.points[0], c + (d - c) * self.points[1]])
         fx = np.asarray(f(x))
