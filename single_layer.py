@@ -126,6 +126,7 @@ class SingleLayerOperator:
         """ Integrates a symmetric singular f over the square [a,b]x[c,d]. """
         h_x = b - a
         h_y = d - c
+        assert h_x > 1e-5 and h_y > 1e-5
         assert (a < b and c < d)
         assert (a, b) <= (c, d)
 
@@ -311,7 +312,7 @@ class SingleLayerOperator:
         x_a, x_b = elem_trial.space_interval
 
         # Check if singularity lies in this element.
-        if x_a <= x_hat <= x_b:
+        if x_a * (1 + 1e-10) <= x_hat <= x_b * (1 - 1e-10):
             # Calculate the time integrated kernel.
             def G_time_parametrized(y_hat):
                 xy = (x - elem_trial.gamma_space(y_hat))**2
