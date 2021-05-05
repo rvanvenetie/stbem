@@ -142,7 +142,11 @@ class InitialOperator:
         #assert touch_bdr >= 1
         return math.fsum([val for elem, val in ips]), ips
 
-    def linform_vector(self, elems=None, cache_dir=None, use_mp=False):
+    def linform_vector(self,
+                       elems=None,
+                       cache_dir=None,
+                       use_mp=False,
+                       problem=None):
         """ Evaluates <M_0 u_0, 1_trial> for all elems in bdr mesh. """
         if elems is None:
             elems = list(self.bdr_mesh.leaf_elements)
@@ -151,9 +155,8 @@ class InitialOperator:
         if cache_dir is not None:
             md5 = hashlib.md5((str(self.bdr_mesh.gamma_space) +
                                str(elems)).encode()).hexdigest()
-            cache_fn = "{}/M0_{}_{}_{}.npy".format(cache_dir,
-                                                   self.bdr_mesh.gamma_space,
-                                                   N, md5)
+            if problem is None: problem = str(self.bdr_mesh.gamma_space)
+            cache_fn = "{}/M0_{}_{}_{}.npy".format(cache_dir, problem, N, md5)
             try:
                 vec = np.load(cache_fn)
                 print("Loaded Initial Operator from file {}".format(cache_fn))

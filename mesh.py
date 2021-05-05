@@ -3,12 +3,10 @@ import numpy as np
 from collections import OrderedDict
 from parametrization import Circle, UnitInterval, UnitSquare, LShape, PiecewiseParametrization
 import hashlib
-from fractions import Fraction
 
 
 class Vertex:
     def __init__(self, t, x, idx):
-        assert isinstance(t, Fraction) and isinstance(x, Fraction)
         self.t = t
         self.x = x
         self.idx = idx
@@ -129,12 +127,10 @@ class Element:
                              x=(self.vertices[0].x + self.vertices[1].x) / 2,
                              idx=-1)
 
-        self.time_interval = float(self.vertices[0].t), float(
-            self.vertices[2].t)
-        self.space_interval = float(self.vertices[0].x), float(
-            self.vertices[2].x)
-        self.h_t = float(abs(self.vertices[2].t - self.vertices[0].t))
-        self.h_x = float(abs(self.vertices[2].x - self.vertices[0].x))
+        self.time_interval = self.vertices[0].t, self.vertices[2].t
+        self.space_interval = self.vertices[0].x, self.vertices[2].x
+        self.h_t = abs(self.vertices[2].t - self.vertices[0].t)
+        self.h_x = abs(self.vertices[2].x - self.vertices[0].x)
 
     def dist(self, other):
         """ Calculates the distance in the embedded space. """
@@ -170,8 +166,7 @@ class Mesh:
         vertices = []
         for j, t in enumerate(initial_time_mesh):
             for i, x in enumerate(initial_space_mesh):
-                vertices.append(
-                    Vertex(t=Fraction(t), x=Fraction(x), idx=len(vertices)))
+                vertices.append(Vertex(t=t, x=x, idx=len(vertices)))
 
         # Generate all the necessary elements + edges.
         roots = []
@@ -236,6 +231,8 @@ class Mesh:
                                   x=(a.x + b.x) / 2,
                                   idx=len(self.vertices))
             self.vertices.append(child_vertex)
+            assert (a.t == b.t == child_vertex.t) ^ (a.x == b.x ==
+                                                     child_vertex.x)
 
         edge.bisect(child_vertex)
         return child_vertex
@@ -267,6 +264,8 @@ class Mesh:
         new_vertices = []
         for edge in elem.edges_axis(ax):
             new_vertices.append(self.__bisect_edge(edge))
+        assert new_vertices[0].tx[ax] == new_vertices[1].tx[ax]
+        assert new_vertices[0].tx[1 - ax] != new_vertices[1].tx[1 - ax]
 
         # Create the edges between new vertices.
         e1, e2 = self.__create_edges(new_vertices)
@@ -420,14 +419,13 @@ class Mesh:
             len(self.vertices))
         if not use_gamma:
             for vertex in self.vertices:
-                result += "{} {} {} 0\n".format(vertex.idx + 1,
-                                                float(vertex.t),
-                                                float(vertex.x))
+                result += "{} {} {} 0\n".format(vertex.idx + 1, vertex.t,
+                                                vertex.x)
         else:
             for vertex in self.vertices:
-                x, y = self.gamma_space.eval(float(vertex.x))[:, 0]
-                result += "{} {} {} {}\n".format(vertex.idx + 1,
-                                                 float(vertex.t), x, y)
+                x, y = self.gamma_space.eval(vertex.x)[:, 0]
+                result += "{} {} {} {}\n".format(vertex.idx + 1, vertex.t, x,
+                                                 y)
         result += "$EndNodes\n$Elements\n{}\n".format(len(self.leaf_elements))
         for idx, element in enumerate(self.leaf_elements):
             result += "{} 3 2 0 0 {} {} {} {}\n".format(
@@ -461,6 +459,19 @@ class MeshParametrized(Mesh):
                     elem.gamma_space = gamma_space.pw_gamma[i]
                     break
             assert elem.gamma_space
+
+        # Count vertices.
+        assert len([vtx for vtx in self.vertices
+                    if vtx.x == 0]) == len(initial_time_mesh)
+        assert len([vtx for vtx in self.vertices
+                    if vtx.t == 0]) == len(initial_space_mesh)
+        assert len([
+            vtx for vtx in self.vertices
+            if vtx.x == self.gamma_space.gamma_length
+        ]) == len(initial_time_mesh)
+        assert len([
+            vtx for vtx in self.vertices if vtx.t == initial_time_mesh[-1]
+        ]) == len(initial_space_mesh)
 
         # Ensure that the initial space consists at least of three elements.
         if self.glue_space and len(self.roots) < 3:

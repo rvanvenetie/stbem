@@ -21,9 +21,10 @@ class DummyElement:
 
 
 class HierarchicalErrorEstimator:
-    def __init__(self, SL, M0=None):
+    def __init__(self, SL, M0=None, g=None):
         self.SL = SL
         self.M0 = M0
+        self.g = g
 
     def __uniform_refinement(self, elems):
         """ Returns the uniform refinement of the given elements. """
@@ -47,7 +48,7 @@ class HierarchicalErrorEstimator:
             result.append(children)
         return result
 
-    def estimate(self, elems, Phi):
+    def estimate(self, elems, Phi, problem=None):
         """ Returns the hierarchical basis estimator for given function Phi. """
 
         # Calcualte uniform refinement of the mesh.
@@ -67,9 +68,18 @@ class HierarchicalErrorEstimator:
                                      use_mp=True)
         VPhi = mat @ Phi
 
+        rhs = np.zeros(len(elems_fine))
+
+        # Evaluate the dirichlet data
+        if self.g:
+            rhs += self.g(elems_fine)
+
         # Evaluate the RHS on the fine mesh.
-        rhs = -self.M0.linform_vector(
-            elems=elems_fine, cache_dir='data', use_mp=True)
+        if self.M0:
+            rhs -= self.M0.linform_vector(elems=elems_fine,
+                                          cache_dir='data',
+                                          use_mp=True,
+                                          problem=problem)
 
         estims = []
         for i, elem_coarse in enumerate(elems_coarse):

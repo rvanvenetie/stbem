@@ -1,4 +1,5 @@
 import random
+import hashlib
 import multiprocessing as mp
 import time
 import math
@@ -38,6 +39,7 @@ class ErrorEstimator:
         print('N_weighted_l2={}\nN_slobo_outer={}\nN_slobo_inner={}\n'.format(
             *N_poly))
 
+        self.bdr_mesh = mesh
         self.gamma_len = mesh.gamma_space.gamma_length
         self.gauss_2d = ProductScheme2D(gauss_quadrature_scheme(N_weighted_l2))
 
@@ -178,7 +180,7 @@ class ErrorEstimator:
         # Return the weighted l2 norm.
         return elem.h_t**(-1 / 2) * res_l2, elem.h_x**(-1) * res_l2
 
-    def residual_pw(self, elems, Phi, SL, M0u0):
+    def residual_pw(self, elems, Phi, SL, M0u0=None, g=None):
         """ Returns the residual function for a pw polygonal domain. """
         SL._init_elems()
 
@@ -196,19 +198,42 @@ class ErrorEstimator:
                     else:
                         VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat,
                                                      x.reshape(2, 1))
+                result[i] = VPhi
 
                 # Compare with rhs.
-                result[i] = VPhi + M0u0(t, x.reshape(2, 1))
+                if M0u0:
+                    result[i] += M0u0(t, x.reshape(2, 1))
+                if g:
+                    result[i] -= g(t, x.reshape(2, 1))
+
             return result
 
         return residual
 
-    def estimate_weighted_l2(self, elems, residual, use_mp=False):
+    def estimate_weighted_l2(self,
+                             elems,
+                             residual,
+                             use_mp=False,
+                             cache_dir=None,
+                             problem=None):
         """ Returns the error estimator for given function Phi. """
+        N = len(elems)
+        if cache_dir is not None:
+            md5 = hashlib.md5((str(self.bdr_mesh.gamma_space) +
+                               str(elems)).encode()).hexdigest()
+            if problem is None: problem = str(self.bdr_mesh.gamma_space)
+            cache_fn = "{}/weighted_l2_{}_{}_{}.npy".format(
+                cache_dir, problem, N, md5)
+            try:
+                weighted_l2 = np.load(cache_fn)
+                print('Loaded weighted L2 from {}.'.format(cache_fn))
+                return weighted_l2
+            except:
+                pass
+
         if not use_mp:
             weighted_l2 = [self.weighted_l2(elem, residual) for elem in elems]
         else:
-            N = len(elems)
             globals()['__residual'] = residual
             globals()['__elems'] = elems
             globals()['__error_estimator'] = self
@@ -217,11 +242,30 @@ class ErrorEstimator:
                 mp.Pool(cpu).map(MP_estim_l2, range(N), N // (8 * cpu) + 1))
 
         weighted_l2 = np.array(weighted_l2)
+        if cache_dir is not None: np.save(cache_fn, weighted_l2)
         return weighted_l2
 
-    def estimate_sobolev(self, elems, residual, use_mp=False):
+    def estimate_sobolev(self,
+                         elems,
+                         residual,
+                         use_mp=False,
+                         cache_dir=None,
+                         problem=None):
         """ Returns the error estimator for given function Phi. """
         N = len(elems)
+        if cache_dir is not None:
+            md5 = hashlib.md5((str(self.bdr_mesh.gamma_space) +
+                               str(elems)).encode()).hexdigest()
+            if problem is None: problem = str(self.bdr_mesh.gamma_space)
+            cache_fn = "{}/sobolev_{}_{}_{}.npy".format(
+                cache_dir, problem, N, md5)
+            try:
+                sobolev = np.load(cache_fn.format(N, problem, md5))
+                print('Loaded Sobolev from {}.'.format(cache_fn))
+                return sobolev
+            except:
+                pass
+
         if not use_mp:
             sobolev_time = [
                 self.sobolev_time(elem, residual, nbrs_symmetry=True)
@@ -257,6 +301,7 @@ class ErrorEstimator:
                 if elem.glob_idx < elem_nbr:
                     sobolev[glob_2_loc[elem_nbr], 1] += val_nbr
 
+        if cache_dir is not None: np.save(cache_fn, sobolev)
         return sobolev
 
 
