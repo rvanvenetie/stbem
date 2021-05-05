@@ -1,8 +1,9 @@
 import numpy as np
-from math import sqrt
+from math import sqrt, fsum
 from scipy.special import expi, erf, expn, erfc
 
 FPI_INV = (4 * np.pi)**-1
+HPI_INV = (1 / (192 * np.pi))
 PI_SQRT = sqrt(np.pi)
 
 
@@ -37,12 +38,11 @@ def fint_1(a, b, h):
         return 0
     else:
         z = a - b
-        return (4 * z * (np.exp(-(h**2 / (4 * z))) *
-                         (h**2 - 12 * z) + 12 * z) -
-                64 * h * np.sqrt(np.pi) * z**(3 / 2) * erf(h /
-                                                           (2 * np.sqrt(z))) +
-                (h**4 + 24 * h**2 * z) * expi(-(h**2 /
-                                                (4 * z)))) / (96 * np.pi)
+        return 1 / (96 * np.pi) * fsum([
+            4 * z * (np.exp(-(h**2 / (4 * z))) * (h**2 - 12 * z) + 12 * z),
+            -64 * h * PI_SQRT * z**(3 / 2) * erf(h / (2 * np.sqrt(z))),
+            (h**4 + 24 * h**2 * z) * expi(-(h**2 / (4 * z))),
+        ])
 
 
 def fint_2(a, b, h, k):
@@ -51,27 +51,21 @@ def fint_2(a, b, h, k):
         return 0
     else:
         z = a - b
-        val = (1 / (192 * np.pi)) * (
-            (4 * z * ((-(-1 + np.exp(
-                (k * (2 * h + k)) / (4 * z)))) * h**2 + k**2 + 2 * h *
-                      (k - 8 * np.exp(
-                          (h + k)**2 /
-                          (4 * z)) * np.sqrt(np.pi) * np.sqrt(z)) - np.exp(
-                              (h * (h + 2 * k)) / (4 * z)) *
-                      (k**2 - 12 * z) - 12 * z - 12 * np.exp(
-                          (h + k)**2 / (4 * z)) * z + 12 * np.exp(
-                              (k *
-                               (2 * h + k)) / (4 * z)) * z)) / np.exp(
-                                   (h + k)**2 /
-                                   (4 * z)) + 64 * h * np.sqrt(np.pi) * z**
-            (3 / 2) * erf(h / (2 * np.sqrt(z))) - 64 * k * np.sqrt(np.pi) * z**
-            (3 / 2) * erfc(k / (2 * np.sqrt(z))) + 64 *
-            (h + k) * np.sqrt(np.pi) * z**(3 / 2) * erfc(
-                (h + k) /
-                (2 * np.sqrt(z))) + 24 * h**2 * z * expn(1, h**2 / (4 * z)) -
-            h**4 * expi(-(h**2 / (4 * z))) - k**4 * expi(-(k**2 / (4 * z))) -
-            24 * k**2 * z * expi(-(k**2 / (4 * z))) + (h + k)**2 *
-            ((h + k)**2 + 24 * z) * expi(-((h + k)**2 / (4 * z))))
+        z4 = 4 * z
+        zsqrt = np.sqrt(z)
+        h2 = h**2
+        k2 = k**2
+        val = HPI_INV * fsum([
+            (-4 * (h2 - 12 * z) * z) * np.exp(-h2 / z4),
+            -(4 * (k2 - 12 * z) * z) * np.exp(-k2 / z4),
+            (4 * ((h + k)**2 - 12 * z) * z) * np.exp(-(h + k)**2 / z4),
+            -48 * z**2 + 64 * h * PI_SQRT * z**(3 / 2) * erf(h / (2 * zsqrt)),
+            64 * k * PI_SQRT * z**(3 / 2) * erf(k / (2 * zsqrt)),
+            -64 * (h + k) * PI_SQRT * z**(3 / 2) * erf((h + k) / (2 * zsqrt)),
+            -(h**4 + 24 * h2 * z) * expi(-(h2 / z4)),
+            -(k**4 + 24 * k2 * z) * expi(-(k2 / z4)),
+            (h + k)**2 * ((h + k)**2 + 24 * z) * expi(-((h + k)**2 / z4)),
+        ])
         return val
 
 
@@ -81,15 +75,15 @@ def fint_3(a, b, h, k):
         return 0
     else:
         z = a - b
-        return (1 / (192 * np.pi)) * (
+        return HPI_INV * (
             (-4 * np.exp((h * k) / (2 * z)) *
              ((h - k)**2 - 12 * z) * z - 4 * np.exp(h**2 / (4 * z)) * z *
              (-k**2 + 12 * z) + np.exp(k**2 / (4 * z)) *
              (4 * (h**2 - 12 * z) * z + np.exp(h**2 / (4 * z)) *
-              (48 * z**2 - 64 * h * np.sqrt(np.pi) * z**
+              (48 * z**2 - 64 * h * PI_SQRT * z**
                (3 / 2) * erf(h / (2 * np.sqrt(z))) + 16 *
-               (4 * h - 3 * k) * np.sqrt(np.pi) * z**(3 / 2) * erf(
-                   (h - k) / (2 * np.sqrt(z))) - 64 * k * np.sqrt(np.pi) * z**
+               (4 * h - 3 * k) * PI_SQRT * z**(3 / 2) * erf(
+                   (h - k) / (2 * np.sqrt(z))) - 64 * k * PI_SQRT * z**
                (3 / 2) * erf(k / (2 * np.sqrt(z))) + h**4 * expi(-(h**2 /
                                                                    (4 * z))) +
                24 * h**2 * z * expi(-(h**2 / (4 * z))) - h**4 * expi(-(
@@ -105,8 +99,7 @@ def fint_3(a, b, h, k):
                                            (4 * z))) - 24 * k**2 * z * expi(-(
                                                (h - k)**2 / (4 * z))) + k**2 *
                (k**2 + 24 * z) * expi(-(k**2 / (4 * z)))))) / np.exp(
-                   (h**2 + k**2) /
-                   (4 * z)) + 16 * k * np.sqrt(np.pi) * z**(3 / 2) *
+                   (h**2 + k**2) / (4 * z)) + 16 * k * PI_SQRT * z**(3 / 2) *
             (-1 + erfc(np.abs(h - k) / (2 * np.sqrt(z)))) * np.sign(h - k))
 
 
@@ -115,32 +108,28 @@ def fint_4(a, b, h, k, l):
     if a <= b: return 0
     else:
         z = a - b
-        hk = h - k
         hl = h - l
-        expihk = expi(-((h - k)**2 / (4 * z)))
-        expihl = expi(-((h - l)**2 / (4 * z)))
-        sqrtz = np.sqrt(z)
-        sqrtpi = np.sqrt(np.pi)
+        hk = h - k
+        z4 = 4 * z
         z32 = z**(3 / 2)
-        return (1 / (192 * np.pi)) * (
-            4 * z * ((hk**2 - 12 * z) / np.exp(hk**2 / (4 * z)) -
-                     (k**2 - 12 * z) / np.exp(k**2 / (4 * z)) +
-                     (l**2 - 12 * z) / np.exp(l**2 / (4 * z)) +
-                     (-hl**2 + 12 * z) / np.exp(hl**2 / (4 * z))) + 64 *
-            (-h + k) * sqrtpi * z32 * erf(hk / (2 * sqrtz)) +
-            64 * k * sqrtpi * z32 * erf(k / (2 * sqrtz)) +
-            64 * h * sqrtpi * z32 * erf(hl / (2 * sqrtz)) -
-            64 * l * sqrtpi * z32 * erf(hl / (2 * sqrtz)) -
-            64 * l * sqrtpi * z32 * erf(l / (2 * sqrtz)) + h**4 * expihk -
-            4 * h**3 * k * expihk + 6 * h**2 * k**2 * expihk -
-            4 * h * k**3 * expihk + k**4 * expihk + 24 * h**2 * z * expihk -
-            48 * h * k * z * expihk + 24 * k**2 * z * expihk -
-            k**4 * expi(-(k**2 / (4 * z))) - 24 * k**2 * z * expi(-(k**2 /
-                                                                    (4 * z))) -
-            h**4 * expihl + 4 * h**3 * l * expihl - 6 * h**2 * l**2 * expihl +
-            4 * h * l**3 * expihl - l**4 * expihl - 24 * h**2 * z * expihl +
-            48 * h * l * z * expihl - 24 * l**2 * z * expihl + l**2 *
-            (l**2 + 24 * z) * expi(-(l**2 / (4 * z))))
+        zsqrt = np.sqrt(z)
+        k2 = k**2
+        l2 = l**2
+
+        return HPI_INV * fsum([
+            (4 * (hk**2 - 12 * z) * z) * np.exp(-hk**2 / z4),
+            -(4 * (k2 - 12 * z) * z) * np.exp(-k2 / z4),
+            (4 * (l2 - 12 * z) * z) * np.exp(-l2 / z4),
+            (-4 * hl**2 * z + 48 * z**2) * np.exp(-hl**2 / z4),
+            64 * (-h + k) * PI_SQRT * z32 * erf(hk / (2 * zsqrt)),
+            64 * k * PI_SQRT * z32 * erf(k / (2 * zsqrt)),
+            64 * hl * PI_SQRT * z32 * erf(hl / (2 * zsqrt)),
+            -64 * l * PI_SQRT * z32 * erf(l / (2 * zsqrt)),
+            hk**2 * (hk**2 + 24 * z) * expi(-(hk**2 / z4)),
+            -(k**4 + 24 * k2 * z) * expi(-(k2 / z4)),
+            -hl**2 * (hl**2 + 24 * z) * expi(-(hl**2 / z4)),
+            (l**4 + 24 * l2 * z) * expi(-(l2 / z4)),
+        ])
 
 
 #def fint_5(a, b, h, k, l):
