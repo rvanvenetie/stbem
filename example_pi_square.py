@@ -62,7 +62,7 @@ if __name__ == "__main__":
     theta = 0.7
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
-                         initial_mesh=UnitSquareBoundaryRefined,
+                         initial_mesh=PiSquareBoundaryRefined,
                          cache_dir=cache_dir,
                          problem=problem)
     SL = SingleLayerOperator(mesh, cache_dir=cache_dir)
