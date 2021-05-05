@@ -47,7 +47,7 @@ class HierarchicalErrorEstimator:
             result.append(children)
         return result
 
-    def estimate(self, elems, Phi):
+    def estimate(self, elems, Phi, problem=None):
         """ Returns the hierarchical basis estimator for given function Phi. """
 
         # Calcualte uniform refinement of the mesh.
@@ -69,7 +69,7 @@ class HierarchicalErrorEstimator:
 
         # Evaluate the RHS on the fine mesh.
         rhs = -self.M0.linform_vector(
-            elems=elems_fine, cache_dir='data', use_mp=True)
+            elems=elems_fine, cache_dir='data', use_mp=True, problem=problem)
 
         estims = []
         for i, elem_coarse in enumerate(elems_coarse):

@@ -38,6 +38,7 @@ def M0u0(t, xy):
 if __name__ == "__main__":
     N_procs = mp.cpu_count()
     mp.set_start_method('fork')
+    problem = 'UnitSquare_Singlar'
     print('Running parallel with {} threads.'.format(N_procs))
 
     mesh = MeshParametrized(UnitSquare())
@@ -62,16 +63,15 @@ if __name__ == "__main__":
             (str(mesh.gamma_space) + str(elems)).encode()).hexdigest()
         print('Loop with {} dofs'.format(N))
         print(mesh.gmsh(use_gamma=True),
-              file=open(
-                  "./data/singular_{}_{}_{}.gmsh".format(
-                      mesh.gamma_space, N, mesh.md5()), "w"))
+              file=open("./data/{}_{}_{}.gmsh".format(problem, N, md5), "w"))
         dofs.append(N)
 
         # Calculate SL matrix.
         mat = SL.bilform_matrix(elems, elems, cache_dir='data', use_mp=True)
 
         # Calculate initial potential.
-        rhs = -M0.linform_vector(elems=elems, cache_dir='data', use_mp=True)
+        rhs = -M0.linform_vector(
+            elems=elems, cache_dir='data', use_mp=True, problem=problem)
 
         # Solve.
         time_solve_begin = time.time()
@@ -80,10 +80,12 @@ if __name__ == "__main__":
 
         # Do the hierarhical error estimator.
         time_hierarch_begin = time.time()
-        hierarch = hierarch_error_estimator.estimate(elems, Phi)
+        hierarch = hierarch_error_estimator.estimate(elems,
+                                                     Phi,
+                                                     problem=problem)
         print('\nHierarch\t time: {}\t space: {}\t'.format(
             np.sum(hierarch[:, 0]), np.sum(hierarch[:, 1])))
-        np.save('data/hierarch_{}_{}.npy'.format(N, md5), hierarch)
+        np.save('data/hierarch_{}_{}_{}.npy'.format(N, problem, md5), hierarch)
         errs_hierch.append(np.sqrt(np.sum(hierarch)))
         print('Hierarchical error estimator took {}s'.format(
             time.time() - time_hierarch_begin))
@@ -92,15 +94,13 @@ if __name__ == "__main__":
         residual = error_estimator.residual(elems, Phi, SL, M0u0)
 
         time_begin = time.time()
-        try:
-            weighted_l2 = np.load('data/weighted_l2_{}_{}.npy'.format(N, md5))
-        except:
-            weighted_l2 = error_estimator.estimate_weighted_l2(elems,
-                                                               residual,
-                                                               use_mp=True)
-            print('\nWeighted L2\t time: {}\t space: {}\t'.format(
-                np.sum(weighted_l2[:, 0]), np.sum(weighted_l2[:, 1])))
-            np.save('data/weighted_l2_{}_{}.npy'.format(N, md5), weighted_l2)
+        weighted_l2 = error_estimator.estimate_weighted_l2(elems,
+                                                           residual,
+                                                           use_mp=True,
+                                                           cache_dir='data',
+                                                           problem=problem)
+        print('\nWeighted L2\t time: {}\t space: {}\t'.format(
+            np.sum(weighted_l2[:, 0]), np.sum(weighted_l2[:, 1])))
         errs_weighted_l2.append(np.sqrt(np.sum(weighted_l2)))
 
         # Calculate the _unweighted_ l2 error.
@@ -114,15 +114,13 @@ if __name__ == "__main__":
             time.time() - time_begin))
 
         time_begin = time.time()
-        try:
-            sobolev = np.load('data/sobolev_{}_{}.npy'.format(N, md5))
-        except:
-            sobolev = error_estimator.estimate_sobolev(elems,
-                                                       residual,
-                                                       use_mp=True)
-            print('\nSobolev\t time: {}\t space: {}\t'.format(
-                np.sum(sobolev[:, 0]), np.sum(sobolev[:, 1])))
-            np.save('data/sobolev_{}_{}.npy'.format(N, md5), sobolev)
+        sobolev = error_estimator.estimate_sobolev(elems,
+                                                   residual,
+                                                   use_mp=True,
+                                                   cache_dir='data',
+                                                   problem=problem)
+        print('\nSobolev\t time: {}\t space: {}\t'.format(
+            np.sum(sobolev[:, 0]), np.sum(sobolev[:, 1])))
         errs_slo.append(np.sqrt(np.sum(sobolev)))
         print(
             'Error estimation of Slobodeckij normtook {}s'.format(time.time() -
