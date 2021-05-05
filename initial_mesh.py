@@ -1,10 +1,9 @@
 import numpy as np
-from fractions import Fraction
+from math import isclose
 
 
 class Vertex:
     def __init__(self, x, y, idx):
-        assert isinstance(x, Fraction) and isinstance(y, Fraction)
         self.x = x
         self.y = y
         self.xy = (x, y)
@@ -29,10 +28,12 @@ class Element:
         assert vertices[1].x == vertices[2].x
         assert vertices[2].y == vertices[3].y
         assert vertices[3].x == vertices[0].x
+        assert vertices[0].x < vertices[2].x
+        assert vertices[0].y < vertices[2].y
 
         # Check that we are square.
-        assert self.vertices[1].x - self.vertices[0].x == self.vertices[
-            3].y - self.vertices[0].y
+        assert isclose(self.vertices[1].x - self.vertices[0].x,
+                       self.vertices[3].y - self.vertices[0].y)
 
     @property
     def edges(self):
@@ -75,8 +76,7 @@ class InitialMesh:
     def __init__(self, vertices, elements):
         self.vertices = []
         for i, xy in enumerate(vertices):
-            self.vertices.append(
-                Vertex(x=Fraction(xy[0]), y=Fraction(xy[1]), idx=i))
+            self.vertices.append(Vertex(x=xy[0], y=xy[1], idx=i))
         self.__bisect_edge = {}
         self.parent_edge = {}
         self.elements = []
@@ -92,10 +92,10 @@ class InitialMesh:
             for edge in elem.edges:
                 self.nbrs[edge] = elem
 
-    def vertex_from_coords(self, xy, eps=1e-15):
+    def vertex_from_coords(self, xy):
         result = None
         for vtx in self.vertices:
-            if abs(vtx.x - xy[0]) <= eps and abs(vtx.y - xy[1]) <= eps:
+            if isclose(vtx.x, xy[0]) and isclose(vtx.y, xy[1]):
                 assert result is None
                 result = vtx
         return result
@@ -110,6 +110,7 @@ class InitialMesh:
                              y=(a.y + b.y) / 2,
                              idx=len(self.vertices))
             self.vertices.append(new_vtx)
+            assert (a.x == b.x == new_vtx.x) ^ (a.y == b.y == new_vtx.y)
 
         self.__bisect_edge[(a, b)] = new_vtx
         self.parent_edge[(a, new_vtx)] = (a, b)
@@ -172,7 +173,7 @@ class InitialMesh:
         for elem in leaves:
             self.refine(elem)
 
-    def refine_msh_bdr(self, v0, v1, eps=1e-15):
+    def refine_msh_bdr(self, v0, v1, eps=1e-10):
         """ Locally refines the mesh until it contains an element (touching the boundary)
             that has an edge that coincides with the given edge v0 <--> v1. """
         # Cast the input to a vector.
@@ -207,11 +208,11 @@ class InitialMesh:
 
                     # Check whether v0 v1 is contained in other edge.
                     assert v0[n_axis] <= v1[n_axis]
-                    if va[n_axis] - eps <= v0[n_axis] <= v1[
-                            n_axis] <= vb[n_axis] + eps:
+                    if va[n_axis] * (1 - eps) <= v0[n_axis] <= v1[
+                            n_axis] <= vb[n_axis] * (1 + eps):
                         # If this elements edge coincides with v0, v1, return!
-                        if abs(va[n_axis] - v0[n_axis]) <= eps and abs(
-                                v1[n_axis] - vb[n_axis]) <= eps:
+                        if isclose(va[n_axis], v0[n_axis]) and isclose(
+                                v1[n_axis], vb[n_axis]):
                             return elem
                         parent = elem
 

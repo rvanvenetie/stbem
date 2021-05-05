@@ -180,7 +180,7 @@ class ErrorEstimator:
         # Return the weighted l2 norm.
         return elem.h_t**(-1 / 2) * res_l2, elem.h_x**(-1) * res_l2
 
-    def residual(self, elems, Phi, SL, M0u0):
+    def residual(self, elems, Phi, SL, M0u0=None, g=None):
         """ Returns the residual function. """
         SL._init_elems()
 
@@ -193,9 +193,14 @@ class ErrorEstimator:
                 for j, elem_trial in enumerate(elems):
                     VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat,
                                                  x.reshape(2, 1))
+                result[i] = VPhi
 
                 # Compare with rhs.
-                result[i] = VPhi + M0u0(t, x.reshape(2, 1))
+                if M0u0:
+                    result[i] += M0u0(t, x.reshape(2, 1))
+                if g:
+                    result[i] -= g(t, x.reshape(2, 1))
+
             return result
 
         return residual
@@ -215,9 +220,8 @@ class ErrorEstimator:
             cache_fn = "{}/weighted_l2_{}_{}_{}.npy".format(
                 cache_dir, problem, N, md5)
             try:
-                weighted_l2 = np.load('data/weighted_l2_{}_{}_{}.npy'.format(
-                    N, problem, md5))
-                print('Loaded weighted L2 from file.')
+                weighted_l2 = np.load(cache_fn)
+                print('Loaded weighted L2 from {}.'.format(cache_fn))
                 return weighted_l2
             except:
                 pass
@@ -251,9 +255,8 @@ class ErrorEstimator:
             cache_fn = "{}/sobolev_{}_{}_{}.npy".format(
                 cache_dir, problem, N, md5)
             try:
-                sobolev = np.load('data/sobolev_{}_{}_{}.npy'.format(
-                    N, problem, md5))
-                print('Loaded Sobolev from file.')
+                sobolev = np.load(cache_fn.format(N, problem, md5))
+                print('Loaded Sobolev from {}.'.format(cache_fn))
                 return sobolev
             except:
                 pass

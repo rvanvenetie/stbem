@@ -42,7 +42,7 @@ if __name__ == "__main__":
     print('Running parallel with {} threads.'.format(N_procs))
 
     mesh = MeshParametrized(UnitSquare())
-    theta = 0.5
+    theta = 0.9
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
                          initial_mesh=UnitSquareBoundaryRefined)
@@ -88,7 +88,7 @@ if __name__ == "__main__":
             np.sum(hierarch[:, 0]), np.sum(hierarch[:, 1])))
         np.save('data/hierarch_{}_{}_{}.npy'.format(N, problem, md5), hierarch)
         errs_hierch.append(np.sqrt(np.sum(hierarch)))
-        print('Hierarchical error estimator took {}s'.format(
+        print('Hierarchical error estimator took {}s\n'.format(
             time.time() - time_hierarch_begin))
 
         # Calculate the weighted l2 + sobolev error of the residual.
@@ -100,7 +100,7 @@ if __name__ == "__main__":
                                                            use_mp=True,
                                                            cache_dir='data',
                                                            problem=problem)
-        print('\nWeighted L2\t time: {}\t space: {}\t'.format(
+        print('Weighted L2\t time: {}\t space: {}\t'.format(
             np.sum(weighted_l2[:, 0]), np.sum(weighted_l2[:, 1])))
         errs_weighted_l2.append(np.sqrt(np.sum(weighted_l2)))
 
@@ -111,7 +111,7 @@ if __name__ == "__main__":
             err_unweighted_l2 += elem.h_x * weighted_l2[i, 1]
         errs_unweighted_l2.append(sqrt(err_unweighted_l2))
 
-        print('Error estimation of weighted residual took {}s'.format(
+        print('Error estimation of weighted residual took {}s\n'.format(
             time.time() - time_begin))
 
         time_begin = time.time()
@@ -120,7 +120,7 @@ if __name__ == "__main__":
                                                    use_mp=True,
                                                    cache_dir='data',
                                                    problem=problem)
-        print('\nSobolev\t time: {}\t space: {}\t'.format(
+        print('Sobolev\t time: {}\t space: {}\t'.format(
             np.sum(sobolev[:, 0]), np.sum(sobolev[:, 1])))
         errs_slo.append(np.sqrt(np.sum(sobolev)))
         print(
