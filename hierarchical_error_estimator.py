@@ -101,6 +101,7 @@ class HierarchicalErrorEstimator:
                     V_estim += VPhi[j] * c
                 coefs = np.array(coefs)
                 scaling_estim = coefs @ (S @ coefs.T)
+                assert scaling_estim > 0
                 estim_loc[k] = abs(rhs_estim - V_estim)**2 / scaling_estim
 
             estims.append((estim_loc[0] + 0.5 * estim_loc[2],
@@ -150,12 +151,11 @@ if __name__ == "__main__":
     np.seterr(all='warn')
     print(elt)
     #print(children)
-    SL = SingleLayerOperator(mesh, quad_order=10)
+    SL = SingleLayerOperator(mesh, quad_order=10, pw_exact=True)
     print(SL.bilform(elt, elt))
     print(
         spacetime_integrated_kernel_1(float(t_a), float(t_b), float(t_a),
                                       float(t_b), float(x_b - x_a)))
-    asdf
     S = SL.bilform_matrix(children, children)
     print(SL.bilform_matrix([elt], children))
     print(np.sum(np.diag(S)))
