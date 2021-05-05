@@ -55,7 +55,7 @@ if __name__ == "__main__":
     errs_hierch = []
     error_estimator = ErrorEstimator(mesh, N_poly=5)
     hierarch_error_estimator = HierarchicalErrorEstimator(SL=SL, M0=M0)
-    np.seterr(all='warn')
+    #np.seterr(all='warn')
 
     for k in range(100):
         elems = list(mesh.leaf_elements)
