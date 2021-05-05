@@ -31,7 +31,7 @@ def MP_estim_sobolev_space(i):
 
 
 class ErrorEstimator:
-    def __init__(self, mesh, N_poly=5):
+    def __init__(self, mesh, N_poly=5, cache_dir=None, problem=None):
         assert mesh.glue_space
         if not isinstance(N_poly, tuple):
             N_poly = (N_poly, N_poly, N_poly)
@@ -45,6 +45,11 @@ class ErrorEstimator:
 
         self.gauss = gauss_quadrature_scheme(N_slobo_outer)
         self.slobodeckij = Slobodeckij(N_slobo_inner)
+
+        # Storing options.
+        self.cache_dir = cache_dir
+        if problem is None: problem = str(self.bdr_mesh.gamma_space)
+        self.problem = problem
 
     def __integrate_h_1_2(self, residual, t_a, t_b, elem_left, elem_right):
         val = np.zeros(self.gauss.weights.shape)
@@ -205,20 +210,14 @@ class ErrorEstimator:
 
         return residual
 
-    def estimate_weighted_l2(self,
-                             elems,
-                             residual,
-                             use_mp=False,
-                             cache_dir=None,
-                             problem=None):
+    def estimate_weighted_l2(self, elems, residual, use_mp=False):
         """ Returns the error estimator for given function Phi. """
         N = len(elems)
-        if cache_dir is not None:
+        if self.cache_dir is not None:
             md5 = hashlib.md5((str(self.bdr_mesh.gamma_space) +
                                str(elems)).encode()).hexdigest()
-            if problem is None: problem = str(self.bdr_mesh.gamma_space)
             cache_fn = "{}/weighted_l2_{}_{}_{}.npy".format(
-                cache_dir, problem, N, md5)
+                self.cache_dir, self.problem, N, md5)
             try:
                 weighted_l2 = np.load(cache_fn)
                 print('Loaded weighted L2 from {}.'.format(cache_fn))
@@ -237,25 +236,19 @@ class ErrorEstimator:
                 mp.Pool(cpu).map(MP_estim_l2, range(N), N // (8 * cpu) + 1))
 
         weighted_l2 = np.array(weighted_l2)
-        if cache_dir is not None: np.save(cache_fn, weighted_l2)
+        if self.cache_dir is not None: np.save(cache_fn, weighted_l2)
         return weighted_l2
 
-    def estimate_sobolev(self,
-                         elems,
-                         residual,
-                         use_mp=False,
-                         cache_dir=None,
-                         problem=None):
+    def estimate_sobolev(self, elems, residual, use_mp=False):
         """ Returns the error estimator for given function Phi. """
         N = len(elems)
-        if cache_dir is not None:
+        if self.cache_dir is not None:
             md5 = hashlib.md5((str(self.bdr_mesh.gamma_space) +
                                str(elems)).encode()).hexdigest()
-            if problem is None: problem = str(self.bdr_mesh.gamma_space)
             cache_fn = "{}/sobolev_{}_{}_{}.npy".format(
-                cache_dir, problem, N, md5)
+                self.cache_dir, self.problem, N, md5)
             try:
-                sobolev = np.load(cache_fn.format(N, problem, md5))
+                sobolev = np.load(cache_fn.format(N, self.problem, md5))
                 print('Loaded Sobolev from {}.'.format(cache_fn))
                 return sobolev
             except:
@@ -296,7 +289,7 @@ class ErrorEstimator:
                 if elem.glob_idx < elem_nbr:
                     sobolev[glob_2_loc[elem_nbr], 1] += val_nbr
 
-        if cache_dir is not None: np.save(cache_fn, sobolev)
+        if self.cache_dir is not None: np.save(cache_fn, sobolev)
         return sobolev
 
 

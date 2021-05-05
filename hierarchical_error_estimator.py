@@ -64,7 +64,6 @@ class HierarchicalErrorEstimator:
         # Evaluate SL matrix tested with the fine mesh.
         mat = self.SL.bilform_matrix(elems_test=elems_fine,
                                      elems_trial=elems_coarse,
-                                     cache_dir='data',
                                      use_mp=True)
         VPhi = mat @ Phi
 
@@ -76,10 +75,7 @@ class HierarchicalErrorEstimator:
 
         # Evaluate the RHS on the fine mesh.
         if self.M0:
-            rhs -= self.M0.linform_vector(elems=elems_fine,
-                                          cache_dir='data',
-                                          use_mp=True,
-                                          problem=problem)
+            rhs -= self.M0.linform_vector(elems=elems_fine, use_mp=True)
 
         estims = []
         for i, elem_coarse in enumerate(elems_coarse):
