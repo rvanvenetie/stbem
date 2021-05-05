@@ -65,24 +65,24 @@ def double_time_integrated_kernel(a, b, c, d):
     assert a < b and c < d
 
     def G(x):
-        x_sqr = np.sum(x**2, axis=0)
+        x_sqr = np.sum(x**2, axis=0) / 4
         result = 0
         if b > d:
             z = b - d
-            a_z = x_sqr / (4 * z)
-            result += FPI_INV * (z * np.exp(-a_z) + z * (1 + a_z) * expi(-a_z))
+            result += FPI_INV * (z * np.exp(-x_sqr / z) +
+                                 (x_sqr + z) * expi(-x_sqr / z))
         if b > c:
             z = b - c
-            a_z = x_sqr / (4 * z)
-            result -= FPI_INV * (z * np.exp(-a_z) + z * (1 + a_z) * expi(-a_z))
+            result -= FPI_INV * (z * np.exp(-x_sqr / z) +
+                                 (x_sqr + z) * expi(-x_sqr / z))
         if a > c:
             z = a - c
-            a_z = x_sqr / (4 * z)
-            result += FPI_INV * (z * np.exp(-a_z) + z * (1 + a_z) * expi(-a_z))
+            result += FPI_INV * (z * np.exp(-x_sqr / z) +
+                                 (x_sqr + z) * expi(-x_sqr / z))
         if a > d:
             z = a - d
-            a_z = x_sqr / (4 * z)
-            result -= FPI_INV * (z * np.exp(-a_z) + z * (1 + a_z) * expi(-a_z))
+            result -= FPI_INV * (z * np.exp(-x_sqr / z) +
+                                 (x_sqr + z) * expi(-x_sqr / z))
 
         return result
 
