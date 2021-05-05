@@ -58,6 +58,7 @@ def M0u0(t, xy):
 if __name__ == "__main__":
     N_procs = mp.cpu_count()
     mp.set_start_method('fork')
+    cache_dir = 'data'
     problem = 'UnitSquare_Smooth'
     print('Running parallel with {} threads.'.format(N_procs))
 
@@ -65,8 +66,10 @@ if __name__ == "__main__":
     theta = 0.9
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
-                         initial_mesh=UnitSquareBoundaryRefined)
-    SL = SingleLayerOperator(mesh)
+                         initial_mesh=UnitSquareBoundaryRefined,
+                         cache_dir=cache_dir,
+                         problem=problem)
+    SL = SingleLayerOperator(mesh, cache_dir=cache_dir)
 
     dofs = []
     errs_trace = []
@@ -74,7 +77,10 @@ if __name__ == "__main__":
     errs_weighted_l2 = []
     errs_slo = []
     errs_hierch = []
-    error_estimator = ErrorEstimator(mesh, N_poly=5)
+    error_estimator = ErrorEstimator(mesh,
+                                     N_poly=5,
+                                     cache_dir=cache_dir,
+                                     problem=problem)
     hierarch_error_estimator = HierarchicalErrorEstimator(SL=SL, M0=M0)
 
     for k in range(100):
@@ -84,15 +90,16 @@ if __name__ == "__main__":
             (str(mesh.gamma_space) + str(elems)).encode()).hexdigest()
         print('Loop with {} dofs'.format(N))
         print(mesh.gmsh(use_gamma=True),
-              file=open("./data/{}_{}_{}.gmsh".format(problem, N, md5), "w"))
+              file=open(
+                  "./{}/mesh_{}_{}_{}.gmsh".format(cache_dir, problem, N, md5),
+                  "w"))
         dofs.append(N)
 
         # Calculate SL matrix.
-        mat = SL.bilform_matrix(elems, elems, cache_dir='data', use_mp=True)
+        mat = SL.bilform_matrix(elems, elems, use_mp=True)
 
         # Calculate initial potential.
-        rhs = -M0.linform_vector(
-            elems=elems, cache_dir='data', use_mp=True, problem=problem)
+        rhs = -M0.linform_vector(elems=elems, use_mp=True)
 
         # Solve.
         time_solve_begin = time.time()
@@ -114,12 +121,11 @@ if __name__ == "__main__":
 
         # Do the hierarhical error estimator.
         time_hierarch_begin = time.time()
-        hierarch = hierarch_error_estimator.estimate(elems,
-                                                     Phi,
-                                                     problem=problem)
+        hierarch = hierarch_error_estimator.estimate(elems, Phi)
         print('\nHierarch\t time: {}\t space: {}\t'.format(
             np.sum(hierarch[:, 0]), np.sum(hierarch[:, 1])))
-        np.save('data/hierarch_{}_{}_{}.npy'.format(N, problem, md5), hierarch)
+        np.save('{}/hierarch_{}_{}_{}.npy'.format(cache_dir, N, problem, md5),
+                hierarch)
         errs_hierch.append(np.sqrt(np.sum(hierarch)))
         print('Hierarchical error estimator took {}s\n'.format(
             time.time() - time_hierarch_begin))
@@ -130,9 +136,7 @@ if __name__ == "__main__":
         time_begin = time.time()
         weighted_l2 = error_estimator.estimate_weighted_l2(elems,
                                                            residual,
-                                                           use_mp=True,
-                                                           cache_dir='data',
-                                                           problem=problem)
+                                                           use_mp=True)
         print('Weighted L2\t time: {}\t space: {}\t'.format(
             np.sum(weighted_l2[:, 0]), np.sum(weighted_l2[:, 1])))
         errs_weighted_l2.append(np.sqrt(np.sum(weighted_l2)))
@@ -150,9 +154,7 @@ if __name__ == "__main__":
         time_begin = time.time()
         sobolev = error_estimator.estimate_sobolev(elems,
                                                    residual,
-                                                   use_mp=True,
-                                                   cache_dir='data',
-                                                   problem=problem)
+                                                   use_mp=True)
         print('Sobolev\t time: {}\t space: {}\t'.format(
             np.sum(sobolev[:, 0]), np.sum(sobolev[:, 1])))
         errs_slo.append(np.sqrt(np.sum(sobolev)))
