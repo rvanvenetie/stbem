@@ -65,7 +65,7 @@ if __name__ == "__main__":
                          initial_mesh=UnitSquareBoundaryRefined,
                          cache_dir=cache_dir,
                          problem=problem)
-    SL = SingleLayerOperator(mesh, cache_dir=cache_dir, problem=problem)
+    SL = SingleLayerOperator(mesh, cache_dir=cache_dir)
 
     dofs = []
     errs_trace = []
