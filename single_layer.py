@@ -105,7 +105,7 @@ def MP_SL_matrix_col(j):
 
 
 class SingleLayerOperator:
-    def __init__(self, mesh, quad_order=12, pw_exact=False):
+    def __init__(self, mesh, quad_order=12, pw_exact=False, cache_dir=None):
         self.pw_exact = pw_exact
         self.gauss_scheme = gauss_quadrature_scheme(23)
         self.gauss_2d = ProductScheme2D(self.gauss_scheme)
@@ -115,6 +115,7 @@ class SingleLayerOperator:
         self.duff_log_log = DuffyScheme2D(self.log_log, symmetric=False)
         self.mesh = mesh
         self.gamma_len = self.mesh.gamma_space.gamma_length
+        self.cache_dir = cache_dir
         self._init_elems()
 
     def _init_elems(self):
@@ -231,11 +232,7 @@ class SingleLayerOperator:
                                     *elem_trial.space_interval,
                                     *elem_test.space_interval)
 
-    def bilform_matrix(self,
-                       elems_test=None,
-                       elems_trial=None,
-                       cache_dir=None,
-                       use_mp=False):
+    def bilform_matrix(self, elems_test=None, elems_trial=None, use_mp=False):
         """ Returns the dense matrix <V 1_trial, 1_test>. """
         if elems_test is None:
             elems_test = list(self.mesh.leaf_elements)
@@ -253,10 +250,10 @@ class SingleLayerOperator:
                     mat[i, j] = self.bilform(elem_trial, elem_test)
             return mat
 
-        if cache_dir is not None:
+        if self.cache_dir is not None:
             md5 = hashlib.md5((str(self.mesh.gamma_space) + str(elems_test) +
                                str(elems_trial)).encode()).hexdigest()
-            cache_fn = "{}/SL_{}_{}x{}_{}.npy".format(cache_dir,
+            cache_fn = "{}/SL_{}_{}x{}_{}.npy".format(self.cache_dir,
                                                       self.mesh.gamma_space, N,
                                                       M, md5)
             try:
@@ -284,7 +281,7 @@ class SingleLayerOperator:
                                                  M // (16 * cpu) + 1)):
                 mat[:, j] = col
 
-        if cache_dir is not None:
+        if self.cache_dir is not None:
             try:
                 np.save(cache_fn, mat)
                 print("Stored Single Layer to {}".format(cache_fn))

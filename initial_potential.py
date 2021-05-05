@@ -34,7 +34,9 @@ class InitialOperator:
                  u0,
                  initial_mesh=None,
                  quad_int=12,
-                 quad_eval=19):
+                 quad_eval=19,
+                 cache_dir=None,
+                 problem=None):
         self.u0 = u0
         self.bdr_mesh = bdr_mesh
         self.initial_mesh = initial_mesh
@@ -50,6 +52,11 @@ class InitialOperator:
                                                  symmetric_xy=False)
         self.duff_3d_touch = DuffySchemeTouch3D(
             ProductScheme3D(self.log_scheme))
+
+        # Storing options.
+        self.cache_dir = cache_dir
+        if problem is None: problem = str(self.bdr_mesh.gamma_space)
+        self.problem = problem
 
     def linform(self, elem_trial):
         """ Evaluates <M_0 u_0, 1_trial>. """
@@ -142,21 +149,17 @@ class InitialOperator:
         #assert touch_bdr >= 1
         return math.fsum([val for elem, val in ips]), ips
 
-    def linform_vector(self,
-                       elems=None,
-                       cache_dir=None,
-                       use_mp=False,
-                       problem=None):
+    def linform_vector(self, elems=None, use_mp=False):
         """ Evaluates <M_0 u_0, 1_trial> for all elems in bdr mesh. """
         if elems is None:
             elems = list(self.bdr_mesh.leaf_elements)
         N = len(elems)
 
-        if cache_dir is not None:
+        if self.cache_dir is not None:
             md5 = hashlib.md5((str(self.bdr_mesh.gamma_space) +
                                str(elems)).encode()).hexdigest()
-            if problem is None: problem = str(self.bdr_mesh.gamma_space)
-            cache_fn = "{}/M0_{}_{}_{}.npy".format(cache_dir, problem, N, md5)
+            cache_fn = "{}/M0_{}_{}_{}.npy".format(self.cache_dir,
+                                                   self.problem, N, md5)
             try:
                 vec = np.load(cache_fn)
                 print("Loaded Initial Operator from file {}".format(cache_fn))
@@ -180,7 +183,7 @@ class InitialOperator:
 
         print('Calculating initial potential took {}s'.format(time.time() -
                                                               time_rhs_begin))
-        if cache_dir is not None:
+        if self.cache_dir is not None:
             try:
                 np.save(cache_fn, vec)
                 print("Stored Initial Operator to {}".format(cache_fn))
