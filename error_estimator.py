@@ -193,7 +193,7 @@ class ErrorEstimator:
         """ Returns the residual function for a pw polygonal domain. """
         SL._init_elems()
 
-        @cython.locals(VPhi=cython.double, result=cython.double[:])
+        @cython.locals(VPhi=cython.double)
         def residual(t: npt.ArrayLike, x_hat: npt.ArrayLike,
                      gamma: object) -> npt.ArrayLike:
             assert len(t) == len(x_hat)

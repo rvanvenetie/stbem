@@ -344,14 +344,14 @@ class SingleLayerOperator:
             def G_time_parametrized(y_hat: npt.ArrayLike):
                 xy = (x - elem_trial.gamma_space(y_hat))**2
                 xy = xy[0] + xy[1]
-                if t <= t_b:
-                    return -FPI_INV * expi(-xy / (4 * (t - t_a)))
+                a, b = elem_trial.time_interval
+                if t <= b:
+                    return -FPI_INV * expi(-xy / (4 * (t - a)))
                 else:
-                    return FPI_INV * (expi(-xy /
-                                           (4 *
-                                            (t - t_b))) - expi(-xy /
-                                                               (4 *
-                                                                (t - t_a))))
+                    return FPI_INV * (expi(-xy / (4 *
+                                                  (t - b))) - expi(-xy /
+                                                                   (4 *
+                                                                    (t - a))))
 
             return self.log_scheme_m.integrate(
                 G_time_parametrized, x_a, x_hat) + self.log_scheme.integrate(
