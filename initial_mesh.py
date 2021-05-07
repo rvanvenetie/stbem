@@ -247,6 +247,12 @@ def PiSquare():
                        elements=[(0, 1, 2, 3)])
 
 
+def LShape():
+    return InitialMesh(vertices=[(0, 0), (0, -1), (1, -1), (1, 0), (1, 1),
+                                 (0, 1), (-1, 1), (-1, 0)],
+                       elements=[(1, 2, 3, 0), (0, 3, 4, 5), (7, 0, 5, 6)])
+
+
 def UnitSquareBoundaryRefined(v0, v1):
     mesh = UnitSquare()
     mesh.refine_msh_bdr(v0, v1)
@@ -260,6 +266,11 @@ def PiSquareBoundaryRefined(v0, v1):
 
 
 if __name__ == "__main__":
-    mesh = UnitSquare()
-    mesh.uniform_refine()
-    mesh.refine_msh_bdr((1, 0.53125), (1, 0.5))
+    mesh = LShape()
+    for k in range(10):
+        for elem in list(mesh.leaf_elements):
+            if elem.vertices[0].xy == (0, 0):
+                mesh.refine(elem)
+                break
+        print(len(mesh.leaf_elements))
+    #print(mesh.gmsh())
