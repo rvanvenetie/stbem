@@ -193,7 +193,7 @@ class ErrorEstimator:
         """ Returns the residual function. """
         SL._init_elems()
 
-        @cython.locals(VPhi=cython.double, result=cython.double[:])
+        @cython.locals(VPhi=cython.double)
         def residual(t: npt.ArrayLike, x_hat: npt.ArrayLike,
                      x: npt.ArrayLike) -> npt.ArrayLike:
             assert len(t) == len(x_hat) == x.shape[1]
