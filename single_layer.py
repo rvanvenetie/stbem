@@ -334,7 +334,7 @@ class SingleLayerOperator:
                 xy = (x - elem_trial.gamma_space(y_hat))**2
                 xy = xy[0] + xy[1]
                 a, b = elem_trial.time_interval
-                if t <= t_b:
+                if t <= b:
                     return -FPI_INV * expi(-xy / (4 * (t - a)))
                 else:
                     return FPI_INV * (expi(-xy / (4 *
