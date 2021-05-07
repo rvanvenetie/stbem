@@ -52,7 +52,7 @@ if __name__ == "__main__":
     for elem in elems:
         if elem.h_x > 1: mesh.refine_space(elem)
 
-    theta = 0.6
+    theta = 0.8
     M0 = InitialOperator(bdr_mesh=mesh,
                          u0=u0,
                          initial_mesh=LShapeBoundaryRefined,
