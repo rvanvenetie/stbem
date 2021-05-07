@@ -181,7 +181,7 @@ class InitialMesh:
         v1 = np.array(v1).reshape(-1, 1)
 
         # Sort the input
-        v0, v1 = sorted([v0, v1], key=lambda v: abs(v[0]) + abs(v[1]))
+        if tuple(v0.flatten()) > tuple(v1.flatten()): v0, v1 = v1, v0
         axis = None
         for i in range(2):
             if v0[i] == v1[i]:
@@ -208,8 +208,8 @@ class InitialMesh:
 
                     # Check whether v0 v1 is contained in other edge.
                     assert v0[n_axis] <= v1[n_axis]
-                    if va[n_axis] * (1 - eps) <= v0[n_axis] <= v1[
-                            n_axis] <= vb[n_axis] * (1 + eps):
+                    if va[n_axis] - eps * abs(va[n_axis]) <= v0[n_axis] <= v1[
+                            n_axis] <= vb[n_axis] + eps * abs(vb[n_axis]):
                         # If this elements edge coincides with v0, v1, return!
                         if isclose(va[n_axis], v0[n_axis]) and isclose(
                                 v1[n_axis], vb[n_axis]):
@@ -261,6 +261,12 @@ def UnitSquareBoundaryRefined(v0, v1):
 
 def PiSquareBoundaryRefined(v0, v1):
     mesh = PiSquare()
+    mesh.refine_msh_bdr(v0, v1)
+    return mesh
+
+
+def LShapeBoundaryRefined(v0, v1):
+    mesh = LShape()
     mesh.refine_msh_bdr(v0, v1)
     return mesh
 
