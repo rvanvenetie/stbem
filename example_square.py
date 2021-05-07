@@ -193,5 +193,5 @@ if __name__ == "__main__":
             .format(dofs, errs_trace, errs_hierch, errs_unweighted_l2,
                     errs_weighted_l2, errs_slo, rates_trace, rates_hierch,
                     rates_unweighted_l2, rates_weighted_l2, rates_slo))
-        #mesh.dorfler_refine_isotropic(np.sum(hierarch + weighted_l2, axis=1), theta)
+        #mesh.dorfler_refine_isotropic(np.sum(sobolev + weighted_l2, axis=1), theta)
         mesh.dorfler_refine_anisotropic(sobolev + weighted_l2, theta)

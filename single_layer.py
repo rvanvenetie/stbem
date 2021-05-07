@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 import hashlib
 import time
 import multiprocessing as mp
@@ -89,7 +90,7 @@ def double_time_integrated_kernel(a, b, c, d):
     return G
 
 
-def MP_SL_matrix_col(j):
+def MP_SL_matrix_col(j: int) -> npt.ArrayLike:
     """ Function to evaluate SL in parallel using the multiprocessing library. """
     global __SL, __elems_test, __elems_trial
     elem_trial = __elems_trial[j]
@@ -111,6 +112,7 @@ class SingleLayerOperator:
         self.duff_log_log = DuffyScheme2D(self.log_log, symmetric=False)
         self.mesh = mesh
         self.gamma_len = self.mesh.gamma_space.gamma_length
+        self.glue_space = self.mesh.glue_space
         self.cache_dir = cache_dir
         self._init_elems()
 
@@ -123,7 +125,7 @@ class SingleLayerOperator:
             elem.__log_scheme_m_y = elem.gamma_space(a + (b - a) *
                                                      self.log_scheme_m.points)
 
-    def __integrate(self, f, a, b, c, d):
+    def __integrate(self, f, a: float, b: float, c: float, d: float) -> float:
         """ Integrates a symmetric singular f over the square [a,b]x[c,d]. """
         h_x = b - a
         h_y = d - c
@@ -149,7 +151,7 @@ class SingleLayerOperator:
                         f, a, b, c + h_x, d)
 
         # If the panels touch through in the glued boundary, split into even parts.
-        if a == 0 and d == self.gamma_len and self.mesh.glue_space:
+        if a == 0 and d == self.gamma_len and self.glue_space:
             assert b < c
             if abs(h_x - h_y) < 1e-10:
                 return self.duff_log_log.mirror_y().integrate(f, a, b, c, d)
@@ -167,7 +169,7 @@ class SingleLayerOperator:
         # TODO: Gauss 2d for disjoint..
         if b < c:
             #return self.gauss_2d.integrate(f, a, b, c, d)
-            if c - b < self.gamma_len - d + a or not self.mesh.glue_space:
+            if c - b < self.gamma_len - d + a or not self.glue_space:
                 return self.log_log.mirror_x().integrate(f, a, b, c, d)
             else:
                 return self.log_log.mirror_y().integrate(f, a, b, c, d)
@@ -190,15 +192,14 @@ class SingleLayerOperator:
         return self.__integrate(f, a, c, c, d) + self.__integrate(
             f, c, b, c, d)
 
-        assert False
-
-    def bilform(self, elem_trial, elem_test):
+    def bilform(self, elem_trial: Element, elem_test: Element) -> float:
         """ Evaluates <V 1_trial, 1_test>. """
         # If the test element lies below the trial element, we are done.
         if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
             return 0
 
-        a, b, c, d = *elem_test.time_interval, *elem_trial.time_interval
+        a, b = elem_test.time_interval
+        c, d = elem_trial.time_interval
 
         # Calculate the time integrated kernel.
         G_time = double_time_integrated_kernel(a, b, c, d)
@@ -302,16 +303,17 @@ class SingleLayerOperator:
             vec[j] = self.potential(elem_trial, t, x)
         return vec
 
-    def evaluate(self, elem_trial, t, x_hat, x=None):
+    def evaluate(self, elem_trial: Element, t: float, x_hat: float,
+                 x: npt.ArrayLike) -> float:
         """ Evaluates (V 1_trial)(t, gamma(x_hat)) for t, x_hat in the param domain. """
         if t <= elem_trial.time_interval[0]: return 0
-        if x is None: x = self.mesh.gamma_space.eval(x_hat)
+        #if x is None: x = self.mesh.gamma_space.eval(x_hat)
         x_a, x_b = elem_trial.space_interval
 
         # Check if singularity lies in this element.
         if x_a * (1 + 1e-10) <= x_hat <= x_b * (1 - 1e-10):
             # Calculate the time integrated kernel.
-            def G_time_parametrized(y_hat):
+            def G_time_parametrized(y_hat: npt.ArrayLike):
                 xy = (x - elem_trial.gamma_space(y_hat))**2
                 xy = xy[0] + xy[1]
                 a, b = elem_trial.time_interval
@@ -328,7 +330,7 @@ class SingleLayerOperator:
                     G_time_parametrized, x_hat, x_b)
 
         # Calculate distance of x_hat to both endpoints.
-        if self.mesh.glue_space:
+        if self.glue_space:
             d_a = min(abs(x_hat - x_a), abs(self.gamma_len - x_hat + x_a))
             d_b = min(abs(x_hat - x_b), abs(self.gamma_len - x_b + x_hat))
         else:
@@ -378,77 +380,78 @@ class SingleLayerOperator:
 
 
 if __name__ == "__main__":
-    mesh = MeshParametrized(UnitSquare())
-    SL = SingleLayerOperator(mesh)
-    elems_coarse = list(mesh.leaf_elements)
-    mesh.uniform_refine()
+    pass
+    #mesh = MeshParametrized(UnitSquare())
+    #SL = SingleLayerOperator(mesh)
+    #elems_coarse = list(mesh.leaf_elements)
     #mesh.uniform_refine()
-    elems_fine = list(mesh.leaf_elements)
-    #val = 0.00198744739918612727756193617162
-    #val = 0.00824947094692018596379322398796
-    #val = 0.00532060688216484664801741125812
-    #val = 0.0158119046824144133115757205122
-    val = 0.00639484934683936137415465919497
-    val = 0.0197337361580657417645813083898
-    for i, elem_test in enumerate(elems_fine):
-        for j, elem_trial in enumerate(elems_coarse):
-            if elem_test.time_interval == (
-                    0., 0.5) and elem_test.space_interval == (
-                        0.5, 1.) and elem_trial.space_interval == (1., 2.):
-                val_approx = SL.bilform(elem_trial, elem_test)
+    ##mesh.uniform_refine()
+    #elems_fine = list(mesh.leaf_elements)
+    ##val = 0.00198744739918612727756193617162
+    ##val = 0.00824947094692018596379322398796
+    ##val = 0.00532060688216484664801741125812
+    ##val = 0.0158119046824144133115757205122
+    #val = 0.00639484934683936137415465919497
+    #val = 0.0197337361580657417645813083898
+    #for i, elem_test in enumerate(elems_fine):
+    #    for j, elem_trial in enumerate(elems_coarse):
+    #        if elem_test.time_interval == (
+    #                0., 0.5) and elem_test.space_interval == (
+    #                    0.5, 1.) and elem_trial.space_interval == (1., 2.):
+    #            val_approx = SL.bilform(elem_trial, elem_test)
 
-    print(val_approx)
-    print(abs(val - val_approx) / val)
-    #print(SL.evaluate(elems[0], 1, 0))
+    #print(val_approx)
+    #print(abs(val - val_approx) / val)
+    ##print(SL.evaluate(elems[0], 1, 0))
 
-    adfa
-    for gamma in [Circle(), UnitSquare(), LShape()]:
-        mesh = MeshParametrized(gamma)
-        dim = 4
-        scheme_stroud = quadpy.cn.stroud_cn_7_1(dim)
-        scheme_mcnamee = quadpy.cn.mcnamee_stenger_9b(dim)
-        print(scheme_stroud.points.shape, scheme_mcnamee.points.shape)
+    #adfa
+    #for gamma in [Circle(), UnitSquare(), LShape()]:
+    #    mesh = MeshParametrized(gamma)
+    #    dim = 4
+    #    scheme_stroud = quadpy.cn.stroud_cn_7_1(dim)
+    #    scheme_mcnamee = quadpy.cn.mcnamee_stenger_9b(dim)
+    #    print(scheme_stroud.points.shape, scheme_mcnamee.points.shape)
 
-        # Randomly refine this mesh.
-        random.seed(5)
-        for _ in range(200):
-            elem = random.choice(list(mesh.leaf_elements))
-            mesh.refine_axis(elem, random.random() < 0.5)
+    #    # Randomly refine this mesh.
+    #    random.seed(5)
+    #    for _ in range(200):
+    #        elem = random.choice(list(mesh.leaf_elements))
+    #        mesh.refine_axis(elem, random.random() < 0.5)
 
-        # We can exactly integrate the kernel if the space part coincides.
-        SL = SingleLayerOperator(mesh)
-        elems = list(mesh.leaf_elements)
-        for i, elem_test in enumerate(elems):
-            for j, elem_trial in enumerate(elems):
-                if elem_test.time_interval[0] <= elem_trial.time_interval[1]:
-                    continue
+    #    # We can exactly integrate the kernel if the space part coincides.
+    #    SL = SingleLayerOperator(mesh)
+    #    elems = list(mesh.leaf_elements)
+    #    for i, elem_test in enumerate(elems):
+    #        for j, elem_trial in enumerate(elems):
+    #            if elem_test.time_interval[0] <= elem_trial.time_interval[1]:
+    #                continue
 
-                val = SL.bilform(elem_trial, elem_test)
+    #            val = SL.bilform(elem_trial, elem_test)
 
-                def kernel(x):
-                    #assert np.all((elem_test.time_interval[0] <= x[0])
-                    #              & (x[0] <= elem_test.time_interval[1]))
-                    #assert np.all((elem_test.space_interval[0] <= x[1])
-                    #              & (x[1] <= elem_test.space_interval[1]))
-                    #assert np.all((elem_trial.time_interval[0] <= x[2])
-                    #              & (x[2] <= elem_trial.time_interval[1]))
-                    #assert np.all((elem_trial.space_interval[0] <= x[3])
-                    #              & (x[3] <= elem_trial.space_interval[1]))
-                    ts = x[0] - x[2]
-                    #assert np.all(ts > 0.5)
-                    xy = elem_test.gamma_space(x[1]) - elem_trial.gamma_space(
-                        x[3])
-                    xysqr = np.sum(xy**2, axis=0)
-                    return 1. / (4 * np.pi * ts) * np.exp(-xysqr / (4 * ts))
+    #            def kernel(x):
+    #                #assert np.all((elem_test.time_interval[0] <= x[0])
+    #                #              & (x[0] <= elem_test.time_interval[1]))
+    #                #assert np.all((elem_test.space_interval[0] <= x[1])
+    #                #              & (x[1] <= elem_test.space_interval[1]))
+    #                #assert np.all((elem_trial.time_interval[0] <= x[2])
+    #                #              & (x[2] <= elem_trial.time_interval[1]))
+    #                #assert np.all((elem_trial.space_interval[0] <= x[3])
+    #                #              & (x[3] <= elem_trial.space_interval[1]))
+    #                ts = x[0] - x[2]
+    #                #assert np.all(ts > 0.5)
+    #                xy = elem_test.gamma_space(x[1]) - elem_trial.gamma_space(
+    #                    x[3])
+    #                xysqr = np.sum(xy**2, axis=0)
+    #                return 1. / (4 * np.pi * ts) * np.exp(-xysqr / (4 * ts))
 
-                cube_points = quadpy.cn.ncube_points(elem_test.time_interval,
-                                                     elem_test.space_interval,
-                                                     elem_trial.time_interval,
-                                                     elem_trial.space_interval)
-                val_stroud = scheme_stroud.integrate(kernel, cube_points)
-                val_mcnamee = scheme_mcnamee.integrate(kernel, cube_points)
-                print(i, j,
-                      abs(val - val_stroud) / val,
-                      abs(val - val_mcnamee) / val)
-                assert abs(val - val_mcnamee) / val < 1e-2
-                exit
+    #            cube_points = quadpy.cn.ncube_points(elem_test.time_interval,
+    #                                                 elem_test.space_interval,
+    #                                                 elem_trial.time_interval,
+    #                                                 elem_trial.space_interval)
+    #            val_stroud = scheme_stroud.integrate(kernel, cube_points)
+    #            val_mcnamee = scheme_mcnamee.integrate(kernel, cube_points)
+    #            print(i, j,
+    #                  abs(val - val_stroud) / val,
+    #                  abs(val - val_mcnamee) / val)
+    #            assert abs(val - val_mcnamee) / val < 1e-2
+    #            exit
