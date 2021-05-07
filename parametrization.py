@@ -196,6 +196,12 @@ class LShape(PiecewisePolygon):
     def __repr__(self):
         return "LShape"
 
+    def integrator(self, poly_order):
+        scheme = quadrature.ProductScheme2D(
+            quadrature.gauss_quadrature_scheme(poly_order))
+        return lambda f: scheme.integrate(f, -1, 0, 0, 1) + scheme.integrate(
+            f, 0, 1, 0, 1) + scheme.integrate(f, 0, 1, -1, 0)
+
 
 class UnitInterval(PiecewisePolygon):
     def __init__(self):
@@ -220,5 +226,3 @@ if __name__ == "__main__":
     # L-shape.
     gamma = LShape()
     gamma.plot()
-
-    plt.show()

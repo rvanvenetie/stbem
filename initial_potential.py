@@ -1,4 +1,4 @@
-from mesh import Mesh, MeshParametrized
+from mesh import Mesh, MeshParametrized, Element
 import multiprocessing as mp
 import hashlib
 import time
@@ -12,6 +12,8 @@ from quadrature import gauss_quadrature_scheme, log_quadrature_scheme, sqrt_quad
 from parametrization import Circle, UnitSquare, LShape
 import numpy as np
 
+FPI_INV = (4 * np.pi)**-1
+
 
 def time_integrated_kernel(a, b):
     """ Returns heat kernel G(t,x) integrated over t in [a,b]. """
@@ -23,8 +25,9 @@ def time_integrated_kernel(a, b):
                                                                    (4 * a)))
 
 
-def MP_M0_val(j):
+def MP_M0_val(j: int):
     """ Function to evaluate M0 in parallel using the multiprocessing library. """
+    global __M0, __elems
     return __M0.linform(__elems[j])[0]
 
 
@@ -58,7 +61,7 @@ class InitialOperator:
         if problem is None: problem = str(self.bdr_mesh.gamma_space)
         self.problem = problem
 
-    def linform(self, elem_trial):
+    def linform(self, elem_trial: Element):
         """ Evaluates <M_0 u_0, 1_trial>. """
         assert self.initial_mesh is not None
 
@@ -140,9 +143,17 @@ class InitialOperator:
             xz = gamma_Q(xyz[0], xyz[2])
             y = gamma_K(xyz[1])
 
-            fx = self.u0(xz) * G_time(np.sum((xz - y)**2, axis=0))
-            val = elem.diam**2 * (d - c) * np.dot(fx,
-                                                  self.duff_3d_touch.weights)
+            # Evaluate time integrated kernel.
+            xz_y = (xz - y)**2
+            xz_y = xz_y[0] + xz_y[1]
+            if a == 0:
+                fx = self.u0(xz) * exp1(xz_y / (4 * b))
+            else:
+                fx = self.u0(xz) * (exp1(xz_y / (4 * b)) - exp1(xz_y /
+                                                                (4 * a)))
+
+            val = elem.diam**2 * (d - c) * FPI_INV * np.dot(
+                fx, self.duff_3d_touch.weights)
             ips.append((elem, val))
 
         assert id_bdr == 1

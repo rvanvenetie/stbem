@@ -1,4 +1,5 @@
 import random
+import numpy.typing as npt
 import hashlib
 import multiprocessing as mp
 import time
@@ -56,8 +57,10 @@ class ErrorEstimator:
         h_t = float(t_b - t_a)
         points = t_a + h_t * self.gauss.points
         for i, t in enumerate(points):
-            residual_t = lambda x_hat, x: residual(np.repeat(t, len(x_hat)),
-                                                   x_hat, x)
+
+            def residual_t(x_hat: npt.ArrayLike,
+                           x: npt.ArrayLike) -> npt.ArrayLike:
+                return residual(np.repeat(t, len(x_hat)), x_hat, x)
 
             if elem_right is None:
                 val[i] = self.slobodeckij.seminorm_h_1_2(
@@ -87,7 +90,7 @@ class ErrorEstimator:
         points = x_a + h_x * self.gauss.points
         for i, x_hat in enumerate(points):
 
-            def slo(t):
+            def slo(t: npt.ArrayLike) -> npt.ArrayLike:
                 return residual(t, np.repeat(x_hat, len(t)), gamma)
 
             val[i] = self.slobodeckij.seminorm_h_1_4(slo, t_a, t_b)
@@ -189,7 +192,8 @@ class ErrorEstimator:
         """ Returns the residual function for a pw polygonal domain. """
         SL._init_elems()
 
-        def residual(t, x_hat, gamma):
+        def residual(t: npt.ArrayLike, x_hat: npt.ArrayLike,
+                     gamma: object) -> npt.ArrayLike:
             assert len(t) == len(x_hat)
             x = gamma(x_hat)
             result = np.zeros(len(t))

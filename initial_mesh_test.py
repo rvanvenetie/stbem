@@ -1,5 +1,5 @@
 import numpy as np
-from initial_mesh import UnitSquare
+from initial_mesh import UnitSquare, LShape
 import random
 from collections import defaultdict
 
@@ -12,8 +12,15 @@ def test_uniform_refine():
             assert elem.level == k + 1
         assert len(mesh.leaf_elements) == 4**(k + 1)
 
+    mesh = LShape()
+    for k in range(4):
+        mesh.uniform_refine()
+        for elem in mesh.leaf_elements:
+            assert elem.level == k + 1
+        assert len(mesh.leaf_elements) == 3 * 4**(k + 1)
 
-def test_local_refine():
+
+def test_local_refine_square():
     mesh = UnitSquare()
     for k in range(10):
         for elem in list(mesh.leaf_elements):
@@ -21,6 +28,16 @@ def test_local_refine():
                 mesh.refine(elem)
                 break
         assert len(mesh.leaf_elements) == 4 + k * 3
+
+
+def test_local_refine_lshape():
+    mesh = LShape()
+    for k in range(10):
+        for elem in list(mesh.leaf_elements):
+            if elem.vertices[0].xy == (0, 0):
+                mesh.refine(elem)
+                break
+        assert len(mesh.leaf_elements) == 6 + k * 9
 
 
 def test_local_refinement_square():
