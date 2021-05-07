@@ -1,4 +1,5 @@
 import random
+import cython
 import numpy.typing as npt
 import hashlib
 import multiprocessing as mp
@@ -192,6 +193,7 @@ class ErrorEstimator:
         """ Returns the residual function. """
         SL._init_elems()
 
+        @cython.locals(VPhi=cython.double, result=cython.double[:])
         def residual(t: npt.ArrayLike, x_hat: npt.ArrayLike,
                      x: npt.ArrayLike) -> npt.ArrayLike:
             assert len(t) == len(x_hat) == x.shape[1]
