@@ -1,11 +1,13 @@
 import numpy as np
 from single_layer_exact import spacetime_integrated_kernel, spacetime_evaluated_1, spacetime_evaluated_2
+import cython
 import numpy.typing as npt
 import hashlib
 import time
 import multiprocessing as mp
 from pytest import approx
 import math
+from math import pi
 import random
 from parametrization import Circle, UnitSquare, LShape
 from mesh import Mesh, MeshParametrized
@@ -15,9 +17,10 @@ from scipy.special import expi, erf, expn, erfc
 from quadrature import log_quadrature_scheme, gauss_quadrature_scheme, ProductScheme2D, DuffyScheme2D
 from mesh import Element
 
-FPI_INV = (4 * np.pi)**-1
-TPI_INV = (2 * np.pi)**-1
-PI_SQRT = math.sqrt(np.pi)
+FPI_INV = cython.declare(cython.double)
+FPI_INV = (4 * pi)**-1
+PI_SQRT = cython.declare(cython.double)
+PI_SQRT = math.sqrt(pi)
 
 
 def kernel(t, x):
@@ -129,7 +132,9 @@ class SingleLayerOperator:
             elem.__log_scheme_m_y = elem.gamma_space(a + (b - a) *
                                                      self.log_scheme_m.points)
 
-    def __integrate(self, f, a: float, b: float, c: float, d: float) -> float:
+    @cython.locals(h_x=cython.double, h_y=cython.double)
+    def __integrate(self, f: object, a: float, b: float, c: float,
+                    d: float) -> float:
         """ Integrates a symmetric singular f over the square [a,b]x[c,d]. """
         h_x = b - a
         h_y = d - c
@@ -196,6 +201,10 @@ class SingleLayerOperator:
         return self.__integrate(f, a, c, c, d) + self.__integrate(
             f, c, b, c, d)
 
+    @cython.locals(a=cython.double,
+                   b=cython.double,
+                   c=cython.double,
+                   d=cython.double)
     def bilform(self, elem_trial: Element, elem_test: Element) -> float:
         """ Evaluates <V 1_trial, 1_test>. """
         # If the test element lies below the trial element, we are done.
@@ -313,12 +322,21 @@ class SingleLayerOperator:
             vec[j] = self.potential(elem_trial, t, x)
         return vec
 
+    @cython.locals(x_a=cython.double,
+                   x_b=cython.double,
+                   d_a=cython.double,
+                   d_b=cython.double,
+                   t_a=cython.double,
+                   t_b=cython.double)
     def evaluate(self, elem_trial: Element, t: float, x_hat: float,
                  x: npt.ArrayLike) -> float:
         """ Evaluates (V 1_trial)(t, gamma(x_hat)) for t, x_hat in the param domain. """
         if t <= elem_trial.time_interval[0]: return 0
         #if x is None: x = self.mesh.gamma_space.eval(x_hat)
-        x_a, x_b = elem_trial.space_interval
+        x_a = elem_trial.space_interval[0]
+        x_b = elem_trial.space_interval[1]
+        t_a = elem_trial.time_interval[0]
+        t_b = elem_trial.time_interval[1]
 
         # Check if singularity lies in this element.
         if x_a * (1 + 1e-10) <= x_hat <= x_b * (1 - 1e-10):
@@ -326,14 +344,14 @@ class SingleLayerOperator:
             def G_time_parametrized(y_hat: npt.ArrayLike):
                 xy = (x - elem_trial.gamma_space(y_hat))**2
                 xy = xy[0] + xy[1]
-                a, b = elem_trial.time_interval
-                if t <= b:
-                    return -FPI_INV * expi(-xy / (4 * (t - a)))
+                if t <= t_b:
+                    return -FPI_INV * expi(-xy / (4 * (t - t_a)))
                 else:
-                    return FPI_INV * (expi(-xy / (4 *
-                                                  (t - b))) - expi(-xy /
-                                                                   (4 *
-                                                                    (t - a))))
+                    return FPI_INV * (expi(-xy /
+                                           (4 *
+                                            (t - t_b))) - expi(-xy /
+                                                               (4 *
+                                                                (t - t_a))))
 
             return self.log_scheme_m.integrate(
                 G_time_parametrized, x_a, x_hat) + self.log_scheme.integrate(
@@ -349,13 +367,12 @@ class SingleLayerOperator:
 
         # Calculate |x - gamma(yhat)|^2 for the quadrature rule.
         if d_a <= d_b:
-            xy = (x - elem_trial.__log_scheme_y)**2
+            xy_sqr = (x - elem_trial.__log_scheme_y)**2
         else:
-            xy = (x - elem_trial.__log_scheme_m_y)**2
-        xy = xy[0] + xy[1]
+            xy_sqr = (x - elem_trial.__log_scheme_m_y)**2
+        xy = xy_sqr[0] + xy_sqr[1]
 
         # Evaluate the time integrated kernel for the above points.
-        t_a, t_b = elem_trial.time_interval
         if t <= t_b:
             vec = -FPI_INV * expi(-xy / (4 * (t - t_a)))
         else:

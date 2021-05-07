@@ -441,7 +441,7 @@ def test_single_layer_evaluate_disj():
                         elem_trial.time_interval, elem_trial.space_interval)
                     if t <= elem_trial.time_interval[0]: val_quadpy = 0
                     else: val_quadpy = scheme.integrate(kernel, rect_points)
-                    val = SL.evaluate(elem_trial, t, x_hat)
+                    val = SL.evaluate(elem_trial, t, x_hat, x_ref)
                     assert val_quadpy == approx(val)
 
 
@@ -471,19 +471,20 @@ def test_single_layer_evaluate_pw_polygon():
                             mesh.gamma_space.eval(x) == elem_trial.gamma_space(
                                 x)):
                         continue
+                    gamma = elem_trial.gamma_space
 
                     a, b = elem_trial.space_interval
                     if x == b or x == a:
                         val_exact = spacetime_evaluated_1(
                             t, *elem_trial.time_interval, b - a)
-                        val = SL.evaluate(elem_trial, t, x)
+                        val = SL.evaluate(elem_trial, t, x, gamma(x))
                         assert val == approx(val_exact, abs=0, rel=1e-8)
                     if a < x < b:
                         val_exact = spacetime_evaluated_1(
                             t, *elem_trial.time_interval,
                             x - a) + spacetime_evaluated_1(
                                 t, *elem_trial.time_interval, b - x)
-                        val = SL.evaluate(elem_trial, t, x)
+                        val = SL.evaluate(elem_trial, t, x, gamma(x))
                         assert val == approx(val_exact, abs=0, rel=1e-8)
 
                     if x < a or x > b:
@@ -491,7 +492,7 @@ def test_single_layer_evaluate_pw_polygon():
                         k = max(abs(a - x), abs(b - x))
                         val_exact = spacetime_evaluated_2(
                             t, *elem_trial.time_interval, h, k)
-                        val = SL.evaluate(elem_trial, t, x)
+                        val = SL.evaluate(elem_trial, t, x, gamma(x))
                         assert val == approx(val_exact, rel=1e-8)
 
 
