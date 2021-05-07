@@ -1,5 +1,6 @@
 from mesh import Mesh, MeshParametrized
-from initial_mesh import UnitSquareBoundaryRefined
+from quadrature import *
+from initial_mesh import UnitSquareBoundaryRefined, LShapeBoundaryRefined
 import random
 from scipy.special import expi, erf, expn, erfc
 from pytest import approx
@@ -233,3 +234,53 @@ def test_initial_potential_refine():
 
         val = M0.linform(elem)[0]
         assert val == approx(val_refined, abs=0, rel=1e-10)
+
+
+def test_initial_potential_lshape():
+    def M0u0(t, xy):
+        a = xy[0]
+        b = xy[1]
+        return (1 / 4) * ((erf((1 - a) / (2 * np.sqrt(t))) + erf(
+            (1 + a) / (2 * np.sqrt(t)))) * (erf(
+                (1 - b) /
+                (2 * np.sqrt(t))) + erf(b / (2 * np.sqrt(t)))) + (erf(
+                    (1 - a) / (2 * np.sqrt(t))) + erf(a / (2 * np.sqrt(t)))) *
+                          (-erf(b / (2 * np.sqrt(t))) + erf(
+                              (1 + b) / (2 * np.sqrt(t)))))
+
+    mesh = MeshParametrized(LShape())
+    M0 = InitialOperator(bdr_mesh=mesh,
+                         u0=lambda xy: 1,
+                         initial_mesh=LShapeBoundaryRefined)
+
+    # Randomly refine the bdr mesh and check that evaluation coincides.
+    random.seed(5)
+    for _ in range(300):
+        elem = random.choice([
+            elem for elem in mesh.leaf_elements if elem.time_interval[0] == 0.
+        ])
+        mesh.refine_axis(elem, random.random() < 0.5)
+
+    # Check evaluation.
+    for elem in mesh.leaf_elements:
+        # Create initial mesh
+        c, d = elem.space_interval
+        initial_mesh = LShapeBoundaryRefined(elem.gamma_space(c),
+                                             elem.gamma_space(d))
+
+        t = elem.center.t
+        x = elem.gamma_space(elem.center.x)
+        val_exact = M0u0(t, x)
+        val_approx = M0.evaluate_mesh(t, x, initial_mesh)
+        assert val_approx == approx(val_exact, rel=1e-8, abs=0)
+
+    # Check IP.
+    gauss_2d = ProductScheme2D(log_quadrature_scheme(12, 12),
+                               gauss_quadrature_scheme(15))
+    for elem in mesh.leaf_elements:
+        val_approx = M0.linform(elem)[0]
+        val_exact = gauss_2d.integrate(
+            lambda tx: M0u0(tx[0], elem.gamma_space(tx[1])),
+            *elem.time_interval, *elem.space_interval)
+        print(elem.time_interval, elem.space_interval)
+        assert val_approx == approx(val_exact, rel=1e-4, abs=0)
