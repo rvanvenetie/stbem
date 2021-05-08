@@ -5,6 +5,7 @@ import hashlib
 import multiprocessing as mp
 import time
 import math
+from math import sqrt
 import numpy as np
 from quadrature import gauss_quadrature_scheme, DuffyScheme2D, ProductScheme2D, gauss_sqrtinv_quadrature_scheme
 from pprint import pprint
@@ -184,10 +185,10 @@ class ErrorEstimator:
         x_hat = np.array(x_a + elem.h_x * self.gauss_2d.points[1])
 
         res_sqr = np.asarray(residual(t, x_hat, elem.gamma_space))**2
-        res_l2 = elem.h_x * elem.h_t * np.dot(res_sqr, self.gauss_2d.weights)
+        res_l2 = np.dot(res_sqr, self.gauss_2d.weights)
 
         # Return the weighted l2 norm.
-        return elem.h_t**(-1 / 2) * res_l2, elem.h_x**(-1) * res_l2
+        return elem.h_x * sqrt(elem.h_t) * res_l2, elem.h_t * res_l2
 
     def residual_pw(self, elems, Phi, SL, M0u0=None, g=None):
         """ Returns the residual function for a pw polygonal domain. """
