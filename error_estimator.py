@@ -180,15 +180,17 @@ class ErrorEstimator:
     def weighted_l2(self, elem, residual):
         """ Residual takes arguments t, x_hat, x. """
         # Evaluate squared integral.
-        t_a, x_a = elem.time_interval[0], elem.space_interval[0]
+        t_a = elem.time_interval[0]
+        x_a = elem.space_interval[0]
         t = np.array(t_a + elem.h_t * self.gauss_2d.points[0])
         x_hat = np.array(x_a + elem.h_x * self.gauss_2d.points[1])
 
         res_sqr = np.asarray(residual(t, x_hat, elem.gamma_space))**2
         res_l2 = np.dot(res_sqr, self.gauss_2d.weights)
 
-        # Return the weighted l2 norm.
-        return elem.h_x * sqrt(elem.h_t) * res_l2, elem.h_t * res_l2
+        #  h_t * h_x * h_t^(-1/2) in time.
+        #  h_t * h_x * h_x^(-1) in space.
+        return sqrt(elem.h_t) * elem.h_x * res_l2, elem.h_t * res_l2
 
     def residual_pw(self, elems, Phi, SL, M0u0=None, g=None):
         """ Returns the residual function for a pw polygonal domain. """
@@ -247,7 +249,10 @@ class ErrorEstimator:
             weighted_l2 = list(
                 mp.Pool(cpu).map(MP_estim_l2, range(N), N // (8 * cpu) + 1))
 
+        tot_weighted_l2 = math.fsum(list(sum(weighted_l2, ())))
         weighted_l2 = np.array(weighted_l2)
+        assert math.isclose(sqrt(tot_weighted_l2),
+                            np.sqrt(np.sum(weighted_l2)))
         if self.cache_dir is not None: np.save(cache_fn, weighted_l2)
         return weighted_l2
 

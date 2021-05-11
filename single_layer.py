@@ -158,6 +158,7 @@ class SingleLayerOperator:
                 return self.duff_log_log.mirror_x().integrate(
                     f, a, b, c, c + h_x) + self.__integrate(
                         f, a, b, c + h_x, d)
+        assert not math.isclose(b, c)
 
         # If the panels touch through in the glued boundary, split into even parts.
         if a == 0 and d == self.gamma_len and self.glue_space:
@@ -173,6 +174,7 @@ class SingleLayerOperator:
                     f, a, b, c,
                     d - h_x) + self.duff_log_log.mirror_y().integrate(
                         f, a, b, d - h_x, d)
+        assert not (math.isclose(d, self.gamma_len) and math.isclose(a, 0))
 
         # If we are disjoint.  TODO: Do more singular stuff if close?
         # TODO: Gauss 2d for disjoint..
@@ -195,6 +197,7 @@ class SingleLayerOperator:
             assert b < d
             return self.__integrate(f, a, b, c, b) + self.__integrate(
                 f, a, b, b, d)
+        assert not math.isclose(a, c)
 
         # We have overlap, split this in two parts.
         assert a < c
@@ -356,6 +359,7 @@ class SingleLayerOperator:
             return self.log_scheme_m.integrate(
                 G_time_parametrized, x_a, x_hat) + self.log_scheme.integrate(
                     G_time_parametrized, x_hat, x_b)
+        assert not math.isclose(x_a, x_hat) and not math.isclose(x_b, x_hat)
 
         # Calculate distance of x_hat to both endpoints.
         if self.glue_space:
@@ -364,6 +368,8 @@ class SingleLayerOperator:
         else:
             d_a = abs(x_hat - x_a)
             d_b = abs(x_hat - x_b)
+
+        assert not math.isclose(d_a, 0) and not math.isclose(d_b, 0)
 
         # Calculate |x - gamma(yhat)|^2 for the quadrature rule.
         if d_a <= d_b:

@@ -131,6 +131,8 @@ class Element:
         self.space_interval = self.vertices[0].x, self.vertices[2].x
         self.h_t = abs(self.vertices[2].t - self.vertices[0].t)
         self.h_x = abs(self.vertices[2].x - self.vertices[0].x)
+        assert self.h_x == self.space_interval[1] - self.space_interval[0]
+        assert self.h_t == self.time_interval[1] - self.time_interval[0]
 
     def dist(self, other):
         """ Calculates the distance in the embedded space. """
