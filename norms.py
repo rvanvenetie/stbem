@@ -8,9 +8,10 @@ import quadpy
 
 
 class Slobodeckij:
-    def __init__(self, N_poly):
+    def __init__(self, N_poly_1_4, N_poly_1_2=None):
+        if N_poly_1_2 is None: N_poly_1_2 = N_poly_1_4
         # Scheme for H^{1/4}.
-        self.gauss_sqrtinv = gauss_sqrtinv_quadrature_scheme(N_poly)
+        self.gauss_sqrtinv = gauss_sqrtinv_quadrature_scheme(N_poly_1_4)
         gauss_sqrtinv_2d = ProductScheme2D(self.gauss_sqrtinv,
                                            self.gauss_sqrtinv)
         x = gauss_sqrtinv_2d.points[0]
@@ -19,8 +20,8 @@ class Slobodeckij:
         self.semi_1_4_weights = 2 * gauss_sqrtinv_2d.weights / y
 
         # Scheme for H^{1/2}
-        self.gauss_leg = gauss_quadrature_scheme(N_poly)
-        self.gauss_x = gauss_x_quadrature_scheme(N_poly)
+        self.gauss_leg = gauss_quadrature_scheme(N_poly_1_2)
+        self.gauss_x = gauss_x_quadrature_scheme(N_poly_1_2)
         gauss_x_leg_2d = ProductScheme2D(self.gauss_x, self.gauss_leg)
 
         # Identical gamma's use this.

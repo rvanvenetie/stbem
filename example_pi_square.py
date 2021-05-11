@@ -130,9 +130,11 @@ if __name__ == "__main__":
         residual = error_estimator.residual_pw(elems, Phi, SL, M0u0)
 
         time_begin = time.time()
+        error_estimator.cache_dir = None
         weighted_l2 = error_estimator.estimate_weighted_l2(elems,
                                                            residual,
                                                            use_mp=True)
+        error_estimator.cache_dir = 'data_exact'
         print('Weighted L2\t time: {}\t space: {}\t'.format(
             np.sum(weighted_l2[:, 0]), np.sum(weighted_l2[:, 1])))
         errs_weighted_l2.append(np.sqrt(np.sum(weighted_l2)))
@@ -190,4 +192,5 @@ if __name__ == "__main__":
                     errs_weighted_l2, errs_slo, rates_trace, rates_hierch,
                     rates_unweighted_l2, rates_weighted_l2, rates_slo))
         #mesh.dorfler_refine_isotropic(np.sum(sobolev + weighted_l2, axis=1), theta)
-        mesh.dorfler_refine_anisotropic(sobolev + weighted_l2, theta)
+        #mesh.dorfler_refine_anisotropic(sobolev + weighted_l2, theta)
+        mesh.uniform_refine()

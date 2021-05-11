@@ -38,13 +38,13 @@ def RHS(elems):
 if __name__ == "__main__":
     N_procs = mp.cpu_count()
     mp.set_start_method('fork')
-    cache_dir = 'data'
+    cache_dir = 'data_exact'
     problem = 'UnitSquare_Dirichlet'
     print('Running parallel with {} threads.'.format(N_procs))
 
     mesh = MeshParametrized(UnitSquare())
     theta = 0.5
-    SL = SingleLayerOperator(mesh, cache_dir=cache_dir)
+    SL = SingleLayerOperator(mesh, cache_dir=cache_dir, pw_exact=True)
 
     dofs = []
     errs_unweighted_l2 = []
@@ -91,9 +91,10 @@ if __name__ == "__main__":
         errs_hierch.append(np.sqrt(np.sum(hierarch)))
         print('Hierarchical error estimator took {}s\n'.format(
             time.time() - time_hierarch_begin))
+        #errs_hierch.append(0)
 
         # Calculate the weighted l2 + sobolev error of the residual.
-        residual = error_estimator.residual(elems, Phi, SL, M0u0=None, g=g)
+        residual = error_estimator.residual_pw(elems, Phi, SL, M0u0=None, g=g)
 
         time_begin = time.time()
         weighted_l2 = error_estimator.estimate_weighted_l2(elems,
@@ -151,5 +152,7 @@ if __name__ == "__main__":
             .format(dofs, errs_hierch, errs_unweighted_l2, errs_weighted_l2,
                     errs_slo, rates_hierch, rates_unweighted_l2,
                     rates_weighted_l2, rates_slo))
-        #mesh.dorfler_refine_isotropic(np.sum(hierarch + weighted_l2, axis=1), theta)
-        mesh.dorfler_refine_anisotropic(sobolev + weighted_l2, theta)
+        mesh.uniform_refine()
+        #mesh.dorfler_refine_isotropic(np.sum(sobolev, axis=1), theta)
+        #weighted_l2[:, [0,1]] = weighted_l2[:, [1,0]]
+        #mesh.dorfler_refine_anisotropic(sobolev + weighted_l2, theta)
