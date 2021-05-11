@@ -55,13 +55,14 @@ if __name__ == '__main__':
         help='estimator for marking (hierarchical, sobolev, sobolev-l2)')
     parser.add_argument('--theta',
                         default=0.9,
+                        type=float,
                         help='theta used for adaptive refinement')
     args = parser.parse_args()
 
     print('Arguments:')
     pprint(vars(args))
 
-    assert args.refinement in ['uniform', 'isotropic', 'aniosotropic']
+    assert args.refinement in ['uniform', 'isotropic', 'anisotropic']
     assert args.estimator in ['sobolev', 'hierarchical', 'sobolev-l2']
     assert 0 < args.theta < 1
 
@@ -113,7 +114,7 @@ if __name__ == '__main__':
 
     # Create error estimators.
     error_estimator = ErrorEstimator(mesh,
-                                     N_poly=5,
+                                     N_poly=(5, 5, 5, 5),
                                      cache_dir=cache_dir,
                                      problem=problem)
     hierarch_error_estimator = HierarchicalErrorEstimator(SL=SL,

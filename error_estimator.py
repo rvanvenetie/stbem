@@ -38,9 +38,11 @@ class ErrorEstimator:
         assert mesh.glue_space
         if not isinstance(N_poly, tuple):
             N_poly = (N_poly, N_poly, N_poly, N_poly)
+        self.N_poly = N_poly
         N_weighted_l2, N_slobo_outer, N_slobo_time, N_slobo_space = N_poly
-        print('N_weighted_l2={}\nN_slobo_outer={}\nN_slobo_time={}\nN_slobo_space={}'.format(
-            *N_poly))
+        print(
+            'N_weighted_l2={}\nN_slobo_outer={}\nN_slobo_time={}\nN_slobo_space={}'
+            .format(*N_poly))
 
         self.bdr_mesh = mesh
         self.gamma_len = mesh.gamma_space.gamma_length
@@ -253,7 +255,9 @@ class ErrorEstimator:
         weighted_l2 = np.array(weighted_l2)
         assert math.isclose(sqrt(tot_weighted_l2),
                             np.sqrt(np.sum(weighted_l2)))
-        if self.cache_dir is not None: np.save(cache_fn, weighted_l2)
+        if self.cache_dir is not None:
+            print('Stored weighted L2 to {}.'.format(cache_fn))
+            np.save(cache_fn, weighted_l2)
         return weighted_l2
 
     def estimate_sobolev(self, elems, residual, use_mp=False):
@@ -306,7 +310,9 @@ class ErrorEstimator:
                 if elem.glob_idx < elem_nbr:
                     sobolev[glob_2_loc[elem_nbr], 1] += val_nbr
 
-        if self.cache_dir is not None: np.save(cache_fn, sobolev)
+        if self.cache_dir is not None:
+            print('Stored Sobolev to {}.'.format(cache_fn))
+            np.save(cache_fn, sobolev)
         return sobolev
 
 
