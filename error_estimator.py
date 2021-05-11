@@ -37,9 +37,9 @@ class ErrorEstimator:
     def __init__(self, mesh, N_poly=5, cache_dir=None, problem=None):
         assert mesh.glue_space
         if not isinstance(N_poly, tuple):
-            N_poly = (N_poly, N_poly, N_poly)
-        N_weighted_l2, N_slobo_outer, N_slobo_inner = N_poly
-        print('N_weighted_l2={}\nN_slobo_outer={}\nN_slobo_inner={}\n'.format(
+            N_poly = (N_poly, N_poly, N_poly, N_poly)
+        N_weighted_l2, N_slobo_outer, N_slobo_time, N_slobo_space = N_poly
+        print('N_weighted_l2={}\nN_slobo_outer={}\nN_slobo_time={}\nN_slobo_space={}'.format(
             *N_poly))
 
         self.bdr_mesh = mesh
@@ -47,7 +47,7 @@ class ErrorEstimator:
         self.gauss_2d = ProductScheme2D(gauss_quadrature_scheme(N_weighted_l2))
 
         self.gauss = gauss_quadrature_scheme(N_slobo_outer)
-        self.slobodeckij = Slobodeckij(N_slobo_inner)
+        self.slobodeckij = Slobodeckij(N_slobo_time, N_slobo_space)
 
         # Storing options.
         self.cache_dir = cache_dir
