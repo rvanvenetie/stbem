@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
     # Create error estimators.
     error_estimator = ErrorEstimator(mesh,
-                                     N_poly=(5, 5, 5, 5),
+                                     N_poly=(5, 1, 5, 5),
                                      cache_dir=cache_dir,
                                      problem=problem)
     hierarch_error_estimator = HierarchicalErrorEstimator(SL=SL,
