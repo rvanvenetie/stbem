@@ -57,6 +57,9 @@ if __name__ == '__main__':
                         default=0.9,
                         type=float,
                         help='theta used for adaptive refinement')
+    parser.add_argument('--estimator-quadrature',
+                        default='5355',
+                        help='Quadrature order used for the error estimator.')
     args = parser.parse_args()
 
     print('Arguments:')
@@ -65,6 +68,7 @@ if __name__ == '__main__':
     assert args.refinement in ['uniform', 'isotropic', 'anisotropic']
     assert args.estimator in ['sobolev', 'hierarchical', 'sobolev-l2']
     assert 0 < args.theta < 1
+    assert len(args.estimator_quadrature) == 4
 
     # Create bdr and initial mesh.
     if args.domain == 'UnitSquare':
@@ -113,10 +117,11 @@ if __name__ == '__main__':
         g_linform = None
 
     # Create error estimators.
-    error_estimator = ErrorEstimator(mesh,
-                                     N_poly=(5, 1, 5, 5),
-                                     cache_dir=cache_dir,
-                                     problem=problem)
+    error_estimator = ErrorEstimator(
+        mesh,
+        N_poly=tuple(int(x) for x in args.estimator_quadrature),
+        cache_dir=cache_dir,
+        problem=problem)
     hierarch_error_estimator = HierarchicalErrorEstimator(SL=SL,
                                                           M0=M0,
                                                           g=g_linform)
