@@ -232,8 +232,9 @@ class ErrorEstimator:
         if self.cache_dir is not None:
             md5 = hashlib.md5((str(self.bdr_mesh.gamma_space) +
                                str(elems)).encode()).hexdigest()
-            cache_fn = "{}/weighted_l2_{}_{}_{}.npy".format(
-                self.cache_dir, self.problem, N, md5)
+            cache_fn = "{}/weighted_l2_{}_{}_{}_{}.npy".format(
+                self.cache_dir, self.problem, N,
+                '_'.join(str(y) for y in self.N_poly), md5)
             try:
                 weighted_l2 = np.load(cache_fn)
                 print('Loaded weighted L2 from {}.'.format(cache_fn))
@@ -267,7 +268,8 @@ class ErrorEstimator:
             md5 = hashlib.md5((str(self.bdr_mesh.gamma_space) +
                                str(elems)).encode()).hexdigest()
             cache_fn = "{}/sobolev_{}_{}_{}.npy".format(
-                self.cache_dir, self.problem, N, md5)
+                self.cache_dir, self.problem, N,
+                '_'.join(str(y) for y in self.N_poly), md5)
             try:
                 sobolev = np.load(cache_fn.format(N, self.problem, md5))
                 print('Loaded Sobolev from {}.'.format(cache_fn))

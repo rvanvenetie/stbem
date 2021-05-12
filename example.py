@@ -126,7 +126,11 @@ if __name__ == '__main__':
 
     errs_unweighted_l2 = []
     errs_weighted_l2 = []
+    errs_weighted_l2_time = []
+    errs_weighted_l2_space = []
     errs_slo = []
+    errs_slo_time = []
+    errs_slo_space = []
     errs_hierch = []
 
     for k in range(100):
@@ -198,6 +202,8 @@ if __name__ == '__main__':
                                                                use_mp=True)
             print('Weighted L2\t time: {}\t space: {}\t'.format(
                 np.sum(weighted_l2[:, 0]), np.sum(weighted_l2[:, 1])))
+            errs_weighted_l2_time.append(np.sqrt(np.sum(weighted_l2[:, 0])))
+            errs_weighted_l2_space.append(np.sqrt(np.sum(weighted_l2[:, 1])))
             errs_weighted_l2.append(np.sqrt(np.sum(weighted_l2)))
             print('Error estimation of weighted residual took {}s\n'.format(
                 time.time() - time_begin))
@@ -220,6 +226,8 @@ if __name__ == '__main__':
             print('Sobolev\t time: {}\t space: {}\t'.format(
                 np.sum(sobolev[:, 0]), np.sum(sobolev[:, 1])))
             errs_slo.append(np.sqrt(np.sum(sobolev)))
+            errs_slo_time.append(np.sqrt(np.sum(sobolev[:, 0])))
+            errs_slo_space.append(np.sqrt(np.sum(sobolev[:, 1])))
             print('Error estimation of Slobodeckij normtook {}s'.format(
                 time.time() - time_begin))
         else:
@@ -232,10 +240,12 @@ if __name__ == '__main__':
         rates_hierch = calc_rate(dofs, errs_hierch)
 
         print(
-            '\ndofs={}\nerrs_trace={}\nerr_hierch={}\nerr_unweighted_l2={}\nerr_weighted_l2={}\nerrs_slo={}\n\nrates_trace={}\nrates_hierch={}\nrates_unweighted_l2={}\nrates_weighted_l2={}\nrates_slo={}\n------'
+            '\ndofs={}\nerrs_trace={}\nerr_hierch={}\nerr_unweighted_l2={}\nerr_weighted_l2={}\nerrs_slo={}\n\nerrs_weighted_l2_time={}\nerrs_weighted_l2_space={}\nerrs_slo_time={}\nerrs_slo_space={}\n\nrates_trace={}\nrates_hierch={}\nrates_unweighted_l2={}\nrates_weighted_l2={}\nrates_slo={}\n------'
             .format(dofs, errs_trace, errs_hierch, errs_unweighted_l2,
-                    errs_weighted_l2, errs_slo, rates_trace, rates_hierch,
-                    rates_unweighted_l2, rates_weighted_l2, rates_slo))
+                    errs_weighted_l2, errs_slo, errs_weighted_l2_time,
+                    errs_weighted_l2_space, errs_slo_time, errs_slo_space,
+                    rates_trace, rates_hierch, rates_unweighted_l2,
+                    rates_weighted_l2, rates_slo))
 
         # Find the correct estimator for marking.
         if args.estimator == 'hierarchical':
