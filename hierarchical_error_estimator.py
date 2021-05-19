@@ -8,10 +8,8 @@ class DummyElement:
         self.vertices = vertices
         self.gamma_space = gamma_space
 
-        self.time_interval = float(self.vertices[0].t), float(
-            self.vertices[2].t)
-        self.space_interval = float(self.vertices[0].x), float(
-            self.vertices[2].x)
+        self.time_interval = self.vertices[0].t, self.vertices[2].t
+        self.space_interval = self.vertices[0].x, self.vertices[2].x
         self.h_t = float(abs(self.vertices[2].t - self.vertices[0].t))
         self.h_x = float(abs(self.vertices[2].x - self.vertices[0].x))
 

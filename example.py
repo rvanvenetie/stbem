@@ -1,4 +1,5 @@
 import multiprocessing as mp
+from h_h2_error_estimator import HH2ErrorEstimator
 from quadrature import gauss_quadrature_scheme, ProductScheme2D
 from single_layer import SingleLayerOperator
 from initial_potential import InitialOperator
@@ -40,6 +41,9 @@ if __name__ == '__main__':
     parser.add_argument('--hierarchical',
                         default=True,
                         help='Calculate the hierarchical error estim')
+    parser.add_argument('--h-h2',
+                        default=True,
+                        help='Calculate the h-h2 error estim')
     parser.add_argument('--sobolev',
                         default=True,
                         help='Calculate the sobolev error estim')
@@ -125,6 +129,7 @@ if __name__ == '__main__':
     hierarch_error_estimator = HierarchicalErrorEstimator(SL=SL,
                                                           M0=M0,
                                                           g=g_linform)
+    h_h2_error_estimator = HH2ErrorEstimator(SL=SL, M0=M0, g=g_linform)
 
     dofs = []
     errs_trace = []
@@ -137,6 +142,7 @@ if __name__ == '__main__':
     errs_slo_time = []
     errs_slo_space = []
     errs_hierch = []
+    errs_h_h2 = []
 
     for k in range(100):
         elems = list(mesh.leaf_elements)
@@ -181,6 +187,15 @@ if __name__ == '__main__':
                 time.time() - time_trace_begin))
         else:
             errs_trace.append(0)
+
+        # Do the h-h2 error estimator.
+        if args.h_h2:
+            time_h_h2_begin = time.time()
+            errs_h_h2.append(h_h2_error_estimator.estimate(elems, Phi))
+            print('h/h2 error estimator took {}s\n'.format(time.time() -
+                                                           time_h_h2_begin))
+        else:
+            errs_h_h2.append(0)
 
         # Do the hierarhical error estimator.
         if args.hierarchical:
@@ -243,14 +258,16 @@ if __name__ == '__main__':
         rates_slo = calc_rate(dofs, errs_slo)
         rates_trace = calc_rate(dofs, errs_trace)
         rates_hierch = calc_rate(dofs, errs_hierch)
+        rates_h_h2 = calc_rate(dofs, errs_h_h2)
 
         print(
-            '\ndofs={}\nerrs_trace={}\nerr_hierch={}\nerr_unweighted_l2={}\nerr_weighted_l2={}\nerrs_slo={}\n\nerrs_weighted_l2_time={}\nerrs_weighted_l2_space={}\nerrs_slo_time={}\nerrs_slo_space={}\n\nrates_trace={}\nrates_hierch={}\nrates_unweighted_l2={}\nrates_weighted_l2={}\nrates_slo={}\n------'
-            .format(dofs, errs_trace, errs_hierch, errs_unweighted_l2,
-                    errs_weighted_l2, errs_slo, errs_weighted_l2_time,
-                    errs_weighted_l2_space, errs_slo_time, errs_slo_space,
-                    rates_trace, rates_hierch, rates_unweighted_l2,
-                    rates_weighted_l2, rates_slo))
+            '\ndofs={}\nerrs_trace={}\nerr_hierch={}\nerr_h_h2={}\nerr_unweighted_l2={}\nerr_weighted_l2={}\nerrs_slo={}\n\nerrs_weighted_l2_time={}\nerrs_weighted_l2_space={}\nerrs_slo_time={}\nerrs_slo_space={}\n\nrates_trace={}\nrates_hierch={}\nrates_h_h2={}\nrates_unweighted_l2={}\nrates_weighted_l2={}\nrates_slo={}\n------'
+            .format(dofs, errs_trace, errs_hierch, errs_h_h2,
+                    errs_unweighted_l2, errs_weighted_l2, errs_slo,
+                    errs_weighted_l2_time, errs_weighted_l2_space,
+                    errs_slo_time, errs_slo_space, rates_trace, rates_hierch,
+                    rates_h_h2, rates_unweighted_l2, rates_weighted_l2,
+                    rates_slo))
 
         # Find the correct estimator for marking.
         if args.estimator == 'hierarchical':
