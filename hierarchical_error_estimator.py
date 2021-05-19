@@ -8,10 +8,8 @@ class DummyElement:
         self.vertices = vertices
         self.gamma_space = gamma_space
 
-        self.time_interval = float(self.vertices[0].t), float(
-            self.vertices[2].t)
-        self.space_interval = float(self.vertices[0].x), float(
-            self.vertices[2].x)
+        self.time_interval = self.vertices[0].t, self.vertices[2].t
+        self.space_interval = self.vertices[0].x, self.vertices[2].x
         self.h_t = float(abs(self.vertices[2].t - self.vertices[0].t))
         self.h_x = float(abs(self.vertices[2].x - self.vertices[0].x))
 
@@ -19,14 +17,8 @@ class DummyElement:
         return "Elem(t={}, x={})".format(self.time_interval,
                                          self.space_interval)
 
-
-class HierarchicalErrorEstimator:
-    def __init__(self, SL, M0=None, g=None):
-        self.SL = SL
-        self.M0 = M0
-        self.g = g
-
-    def __uniform_refinement(self, elems):
+    @staticmethod
+    def uniform_refinement(elems):
         """ Returns the uniform refinement of the given elements. """
         result = []
         for elem_coarse in elems:
@@ -48,12 +40,19 @@ class HierarchicalErrorEstimator:
             result.append(children)
         return result
 
+
+class HierarchicalErrorEstimator:
+    def __init__(self, SL, M0=None, g=None):
+        self.SL = SL
+        self.M0 = M0
+        self.g = g
+
     def estimate(self, elems, Phi, problem=None):
         """ Returns the hierarchical basis estimator for given function Phi. """
 
         # Calcualte uniform refinement of the mesh.
         elems_coarse = elems
-        elem_2_children = self.__uniform_refinement(elems_coarse)
+        elem_2_children = DummyElement.uniform_refinement(elems_coarse)
 
         # Flatten list and calculate mapping of indices.
         elems_fine = [
