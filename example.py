@@ -175,7 +175,8 @@ if __name__ == '__main__':
         # Solve.
         time_solve_begin = time.time()
         Phi = np.linalg.solve(mat, rhs)
-        print('Solving matrix took {}s'.format(time.time() - time_solve_begin))
+        print('Solving matrix took {}s\n'.format(time.time() -
+                                                 time_solve_begin))
 
         # Estimate the l2 error of the neumann trace.
         if 'u-trace' in data:
@@ -189,7 +190,7 @@ if __name__ == '__main__':
                     gauss_2d.integrate(err, *elem.time_interval,
                                        *elem.space_interval))
             errs_trace.append(sqrt(fsum(err_trace)))
-            print('Error estimation of \Phi - \partial_n took {}s'.format(
+            print('Error estimation of \Phi - \partial_n took {}s\n'.format(
                 time.time() - time_trace_begin))
         else:
             errs_trace.append(0)
