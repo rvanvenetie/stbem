@@ -155,7 +155,7 @@ if __name__ == '__main__':
         N = len(elems)
         md5 = hashlib.md5(
             (str(mesh.gamma_space) + str(elems)).encode()).hexdigest()
-        print('Loop with {} dofs'.format(N))
+        print('Loop with {} dofs'.format(N), flush=True)
         print(mesh.gmsh(use_gamma=True),
               file=open(
                   "./{}/mesh_{}_{}_{}.gmsh".format(cache_dir, problem, N, md5),
@@ -176,7 +176,8 @@ if __name__ == '__main__':
         time_solve_begin = time.time()
         Phi = np.linalg.solve(mat, rhs)
         print('Solving matrix took {}s\n'.format(time.time() -
-                                                 time_solve_begin))
+                                                 time_solve_begin),
+              flush=True)
 
         # Estimate the l2 error of the neumann trace.
         if 'u-trace' in data:
@@ -191,7 +192,8 @@ if __name__ == '__main__':
                                        *elem.space_interval))
             errs_trace.append(sqrt(fsum(err_trace)))
             print('Error estimation of \Phi - \partial_n took {}s\n'.format(
-                time.time() - time_trace_begin))
+                time.time() - time_trace_begin),
+                  flush=True)
         else:
             errs_trace.append(0)
 
@@ -200,7 +202,8 @@ if __name__ == '__main__':
             time_h_h2_begin = time.time()
             errs_h_h2.append(h_h2_error_estimator.estimate(elems, Phi))
             print('h/h2 error estimator took {}s\n'.format(time.time() -
-                                                           time_h_h2_begin))
+                                                           time_h_h2_begin),
+                  flush=True)
         else:
             errs_h_h2.append(0)
 
