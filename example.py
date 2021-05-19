@@ -1,4 +1,6 @@
 import multiprocessing as mp
+import os
+import distutils.util
 from h_h2_error_estimator import HH2ErrorEstimator
 from quadrature import gauss_quadrature_scheme, ProductScheme2D
 from single_layer import SingleLayerOperator
@@ -40,15 +42,19 @@ if __name__ == '__main__':
                         help='domain (UnitSquare, PiSquare, LShape)')
     parser.add_argument('--hierarchical',
                         default=True,
+                        type=distutils.util.strtobool,
                         help='Calculate the hierarchical error estim')
     parser.add_argument('--h-h2',
                         default=True,
+                        type=distutils.util.strtobool,
                         help='Calculate the h-h2 error estim')
     parser.add_argument('--sobolev',
                         default=True,
+                        type=distutils.util.strtobool,
                         help='Calculate the sobolev error estim')
     parser.add_argument('--l2',
                         default=True,
+                        type=distutils.util.strtobool,
                         help='Calculate the l2 error estim')
     parser.add_argument('--refinement',
                         default='uniform',
@@ -198,14 +204,19 @@ if __name__ == '__main__':
             errs_h_h2.append(0)
 
         # Do the hierarhical error estimator.
-        if args.hierarchical:
+        hierch_fn = '{}/hierarch_{}_{}_{}.npy'.format(cache_dir, N, problem,
+                                                      md5)
+        if os.path.isfile(hierch_fn):
+            hierarch = np.load(hierch_fn)
+            errs_hierch.append(np.sqrt(np.sum(hierarch)))
+            print('Hierarchical error estimator loaded from {}\n'.format(
+                hierch_fn))
+        elif args.hierarchical:
             time_hierarch_begin = time.time()
             hierarch = hierarch_error_estimator.estimate(elems, Phi)
             print('\nHierarch\t time: {}\t space: {}\t'.format(
                 np.sum(hierarch[:, 0]), np.sum(hierarch[:, 1])))
-            np.save(
-                '{}/hierarch_{}_{}_{}.npy'.format(cache_dir, N, problem, md5),
-                hierarch)
+            np.save(hierch_fn, hierarch)
             errs_hierch.append(np.sqrt(np.sum(hierarch)))
             print('Hierarchical error estimator took {}s\n'.format(
                 time.time() - time_hierarch_begin))
