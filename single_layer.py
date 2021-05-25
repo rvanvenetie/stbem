@@ -138,7 +138,7 @@ class SingleLayerOperator:
         """ Integrates a symmetric singular f over the square [a,b]x[c,d]. """
         h_x = b - a
         h_y = d - c
-        assert h_x > 1e-5 and h_y > 1e-5
+        assert h_x > 1e-8 and h_y > 1e-8
         assert (a < b and c < d)
         assert (a, b) <= (c, d)
 
