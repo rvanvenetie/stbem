@@ -414,6 +414,7 @@ class Mesh:
 
     def refine_grading(self, sigma=2, K=4):
         """ Refines the mesh such that h_t \eqsim h_x**sigma. """
+        print('Refine grading with sigma = {}'.format(sigma))
         N = len(self.leaf_elements)
         marked_space = True
         marked_time = True
