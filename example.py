@@ -60,6 +60,15 @@ if __name__ == '__main__':
                         default='uniform',
                         help='refinement (uniform, isotropic, anisotropic)')
     parser.add_argument(
+        '--grading',
+        default=False,
+        type=distutils.util.strtobool,
+        help='Assert that the mesh satisfies a certain grading')
+    parser.add_argument('--grading-sigma',
+                        default=2,
+                        type=float,
+                        help='Grading sigma')
+    parser.add_argument(
         '--estimator',
         default='sobolev',
         help='estimator for marking (hierarchical, sobolev, sobolev-l2)')
@@ -304,3 +313,7 @@ if __name__ == '__main__':
             mesh.dorfler_refine_isotropic(np.sum(eta, axis=1), args.theta)
         elif args.refinement == 'anisotropic':
             mesh.dorfler_refine_anisotropic(eta, args.theta)
+
+        # If we have a fixed grading, apply this.
+        if args.grading:
+            mesh.refine_grading(sigma=args.grading_sigma)
