@@ -412,6 +412,34 @@ class Mesh:
         print(
             'Refinement added {} elements'.format(len(self.leaf_elements) - N))
 
+    def refine_grading(self, sigma=2, K=4):
+        """ Refines the mesh such that h_t \eqsim h_x**sigma. """
+        print('Refine grading with sigma = {}'.format(sigma))
+        N = len(self.leaf_elements)
+        marked_space = True
+        marked_time = True
+        while marked_space or marked_time:
+            marked_space = []
+            marked_time = []
+            elems = list(self.leaf_elements)
+            for elem in elems:
+                if elem.h_t / K >= elem.h_x**sigma:
+                    marked_time.append(elem)
+                elif elem.h_x**sigma >= K * elem.h_t:
+                    marked_space.append(elem)
+                else:
+                    assert elem.h_t / K < elem.h_x**sigma < K * elem.h_t
+
+            marked_time.sort(key=lambda elem: elem.level_time)
+            for elem in marked_time:
+                self.refine_time(elem)
+
+            marked_space.sort(key=lambda elem: elem.level_space)
+            for elem in marked_space:
+                assert not elem.children
+                self.refine_space(elem)
+        print('Grading added {} elements'.format(len(self.leaf_elements) - N))
+
     def md5(self):
         return hashlib.md5(self.gmsh().encode()).hexdigest()
 
@@ -504,7 +532,7 @@ if __name__ == "__main__":
     gamma = UnitSquare()
     mesh = MeshParametrized(gamma)
     np.random.seed(5)
-    for k in range(12):
+    for k in range(5):
         eta = np.random.rand(len(mesh.leaf_elements), 2)
         mesh.dorfler_refine_anisotropic(eta, 0.6)
 
