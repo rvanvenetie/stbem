@@ -295,3 +295,17 @@ def test_dorfler_anisotropic():
         eta = np.random.rand(len(mesh.leaf_elements), 2)
         mesh.dorfler_refine_anisotropic(eta, 0.6)
     print(mesh.gmsh())
+
+
+def test_refine_grading():
+    for gamma in [Circle(), UnitSquare(), LShape()]:
+        mesh = MeshParametrized(gamma)
+        random.seed(5)
+        for _ in range(200):
+            elem = random.choice(list(mesh.leaf_elements))
+            mesh.refine_axis(elem, random.random() < 0.5)
+
+        mesh.refine_grading(sigma=2, K=4)
+        leaves = list(mesh.leaf_elements)
+        for elem in leaves:
+            assert elem.h_t / 4 < elem.h_x**2 < 4 * elem.h_t
