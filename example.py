@@ -314,6 +314,21 @@ if __name__ == '__main__':
         elif args.refinement == 'anisotropic':
             mesh.dorfler_refine_anisotropic(eta, args.theta)
 
-        # If we have a fixed grading, apply this.
-        if args.grading:
+        # If we have a fixed grading, apply post processing for adaptive meshes.
+        if args.grading and args.refinement != 'uniform':
             mesh.refine_grading(sigma=args.grading_sigma)
+        # Create graded mesh by hand for uniform meshes.
+        elif args.grading and args.refinement == 'uniform':
+            # This is a hack.
+            assert args.domain == 'UnitSquare'
+            h_t = 1 / 2**(k + 1)
+            h_x = 1 / 2**((k + 1) / args.grading_sigma)
+            print('Creating mesh with h_t = {} h_x = {}'.format(h_t, h_x))
+            N_x = 4 * round(1 / h_x)
+            N_t = round(1 / h_t)
+            mesh_space = [4 * j / N_x for j in range(N_x + 1)]
+            mesh_time = [j / N_t for j in range(N_t + 1)]
+
+            mesh = MeshParametrized(UnitSquare(),
+                                    initial_space_mesh=mesh_space,
+                                    initial_time_mesh=mesh_time)

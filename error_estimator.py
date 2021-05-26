@@ -194,7 +194,7 @@ class ErrorEstimator:
 
     def residual(self, elems, Phi, SL, M0u0=None, g=None):
         """ Returns the residual function. """
-        SL._init_elems()
+        SL._init_elems(elems)
 
         @cython.locals(VPhi=cython.double)
         def residual(t: npt.ArrayLike, x_hat: npt.ArrayLike,
