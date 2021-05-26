@@ -412,6 +412,7 @@ class Mesh:
 
     def refine_grading(self, sigma=2, K=4):
         """ Refines the mesh such that h_t \eqsim h_x**sigma. """
+        N = len(self.leaf_elements)
         marked_space = True
         marked_time = True
         while marked_space or marked_time:
@@ -434,6 +435,7 @@ class Mesh:
             for elem in marked_space:
                 assert not elem.children
                 self.refine_space(elem)
+        print('Grading added {} elements'.format(len(self.leaf_elements) - N))
 
     def md5(self):
         return hashlib.md5(self.gmsh().encode()).hexdigest()
