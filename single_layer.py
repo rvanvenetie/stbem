@@ -121,11 +121,11 @@ class SingleLayerOperator:
         self.gamma_len = self.mesh.gamma_space.gamma_length
         self.glue_space = self.mesh.glue_space
         self.cache_dir = cache_dir
-        self._init_elems()
+        self._init_elems(self.mesh.leaf_elements)
 
-    def _init_elems(self):
+    def _init_elems(self, elems):
         # For all elements in the mesh, register the log scheme.
-        for elem in self.mesh.leaf_elements:
+        for elem in elems:
             a, b = elem.space_interval
             elem.__log_scheme_y = elem.gamma_space(a + (b - a) *
                                                    self.log_scheme.points)
