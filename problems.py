@@ -82,7 +82,7 @@ def singular_lshape():
 
 
 def problem_helper(problem, domain):
-    assert problem in ['Smooth', 'Dirichlet', 'Singular']
+    assert problem in ['Smooth', 'Dirichlet', 'Singular', 'MildSingular']
     assert domain in ['UnitSquare', 'PiSquare', 'LShape']
 
     result = {}
@@ -106,5 +106,13 @@ def problem_helper(problem, domain):
         result['g-linform'] = lambda elems: np.array(
             [elem.h_t * elem.h_x for elem in elems])
         result['g'] = lambda t, xy: 1
+
+    elif problem == 'MildSingular':
+        result['g-linform'] = lambda elems: np.array([
+            1 / 3 * elem.h_x *
+            (elem.time_interval[1]**3 - elem.time_interval[0]**3)
+            for elem in elems
+        ])
+        result['g'] = lambda t, xy: t**2
 
     return result
