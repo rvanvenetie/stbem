@@ -443,7 +443,7 @@ class Mesh:
     def md5(self):
         return hashlib.md5(self.gmsh().encode()).hexdigest()
 
-    def gmsh(self, use_gamma=False):
+    def gmsh(self, use_gamma=False, element_data=None):
         """Returns the (leaf) grid in gmsh format."""
         result = "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n$Nodes\n{}\n".format(
             len(self.vertices))
@@ -463,6 +463,13 @@ class Mesh:
                 element.vertices[1].idx + 1, element.vertices[2].idx + 1,
                 element.vertices[3].idx + 1)
         result += "$EndElements\n"
+
+        if element_data is not None:
+            result += "$ElementData\n1\n\"data\"\n0\n3\n0\n1\n{}\n".format(
+                len(element_data))
+            for idx, val in enumerate(element_data):
+                result += "{} {}\n".format(idx + 1, val)
+            result += "$EndElementData\n"
         return result
 
 
