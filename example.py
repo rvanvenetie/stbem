@@ -187,6 +187,10 @@ if __name__ == '__main__':
         print('Solving matrix took {}s\n'.format(time.time() -
                                                  time_solve_begin),
               flush=True)
+        print(mesh.gmsh(use_gamma=True, element_data=Phi),
+              file=open(
+                  "./{}/solution_{}_{}_{}.gmsh".format(cache_dir, problem, N,
+                                                       md5), "w"))
 
         # Estimate the l2 error of the neumann trace.
         if 'u-trace' in data:
