@@ -266,6 +266,12 @@ if __name__ == '__main__':
             errs_weighted_l2.append(0)
             errs_unweighted_l2.append(0)
 
+        print(mesh.gmsh(use_gamma=True,
+                        element_data=np.sum(weighted_l2, axis=1)),
+              file=open(
+                  "./{}/weighted_l2_mesh_{}_{}_{}.gmsh".format(
+                      cache_dir, problem, N, md5), "w"))
+
         if args.sobolev:
             time_begin = time.time()
             sobolev = error_estimator.estimate_sobolev(elems,
@@ -280,6 +286,11 @@ if __name__ == '__main__':
                 time.time() - time_begin))
         else:
             errs_slo.append(0)
+
+        print(mesh.gmsh(use_gamma=True, element_data=np.sum(sobolev, axis=1)),
+              file=open(
+                  "./{}/sobolev_mesh_{}_{}_{}.gmsh".format(
+                      cache_dir, problem, N, md5), "w"))
 
         rates_unweighted_l2 = calc_rate(dofs, errs_unweighted_l2)
         rates_weighted_l2 = calc_rate(dofs, errs_weighted_l2)
