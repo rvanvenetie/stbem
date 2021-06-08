@@ -83,7 +83,7 @@ def singular_lshape():
 
 def problem_helper(problem, domain):
     assert problem in ['Smooth', 'Dirichlet', 'Singular', 'MildSingular']
-    assert domain in ['UnitSquare', 'PiSquare', 'LShape']
+    assert domain in ['UnitSquare', 'PiSquare', 'LShape', 'Circle']
 
     result = {}
     if problem == 'Smooth':
