@@ -72,9 +72,8 @@ class ErrorEstimator:
                     elem_left.gamma_space)
             elif elem_left.gamma_space is elem_right.gamma_space:
                 gamma = elem_left.gamma_space
-                assert np.all(
-                    gamma(elem_left.space_interval[1]) == gamma(
-                        elem_right.space_interval[0]))
+                assert np.allclose(gamma(elem_left.space_interval[1]),
+                                   gamma(elem_right.space_interval[0]))
                 val[i] = self.slobodeckij.seminorm_h_1_2(
                     residual_t, elem_left.space_interval[0],
                     elem_right.space_interval[1], gamma)

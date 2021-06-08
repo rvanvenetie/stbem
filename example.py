@@ -12,7 +12,7 @@ import numpy as np
 from math import sqrt, fsum
 from hierarchical_error_estimator import HierarchicalErrorEstimator
 from mesh import MeshParametrized
-from parametrization import PiSquare, UnitSquare, LShape
+from parametrization import PiSquare, UnitSquare, LShape, Circle
 from initial_mesh import UnitSquareBoundaryRefined, LShapeBoundaryRefined, PiSquareBoundaryRefined
 import argparse
 from problems import problem_helper
@@ -39,7 +39,7 @@ if __name__ == '__main__':
                         help='problem (Smooth, Singular, Dirichlet)')
     parser.add_argument('--domain',
                         default='UnitSquare',
-                        help='domain (UnitSquare, PiSquare, LShape)')
+                        help='domain (UnitSquare, PiSquare, LShape, Circle)')
     parser.add_argument('--hierarchical',
                         default=True,
                         type=distutils.util.strtobool,
@@ -105,6 +105,8 @@ if __name__ == '__main__':
         elems = list(mesh.leaf_elements)
         for elem in elems:
             if elem.h_x > 1: mesh.refine_space(elem)
+    elif args.domain == 'Circle':
+        mesh = MeshParametrized(Circle())
     else:
         raise Exception('Invalid domain: {}'.format(args.domain))
 
