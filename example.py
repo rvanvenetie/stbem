@@ -339,9 +339,10 @@ if __name__ == '__main__':
             # This is a hack.
             gamma_len = int(mesh.gamma_space.gamma_length)
 
-            h_t = 1 / 2**(k + 1)
-            h_x = 1 / 2**((k + 1) / args.grading_sigma)
+            h_x = 1 / 2**(k + 1)
+            h_t = 1 / 2**(args.grading_sigma * (k + 1))
             print('Creating mesh with h_t = {} h_x = {}'.format(h_t, h_x))
+
             N_x = gamma_len * round(1 / h_x)
             N_t = round(1 / h_t)
             mesh_space = [gamma_len * j / N_x for j in range(N_x + 1)]
