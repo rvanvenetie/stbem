@@ -337,15 +337,21 @@ if __name__ == '__main__':
         # Create graded mesh by hand for uniform meshes.
         elif args.grading and args.refinement == 'uniform':
             # This is a hack.
-            assert args.domain == 'UnitSquare'
+            gamma_len = int(mesh.gamma_space.gamma_length)
+
             h_t = 1 / 2**(k + 1)
             h_x = 1 / 2**((k + 1) / args.grading_sigma)
             print('Creating mesh with h_t = {} h_x = {}'.format(h_t, h_x))
-            N_x = 4 * round(1 / h_x)
+            N_x = gamma_len * round(1 / h_x)
             N_t = round(1 / h_t)
-            mesh_space = [4 * j / N_x for j in range(N_x + 1)]
+            mesh_space = [gamma_len * j / N_x for j in range(N_x + 1)]
             mesh_time = [j / N_t for j in range(N_t + 1)]
 
-            mesh = MeshParametrized(UnitSquare(),
-                                    initial_space_mesh=mesh_space,
-                                    initial_time_mesh=mesh_time)
+            if args.domain == 'UnitSquare':
+                mesh = MeshParametrized(UnitSquare(),
+                                        initial_space_mesh=mesh_space,
+                                        initial_time_mesh=mesh_time)
+            elif args.domain == 'LShape':
+                mesh = MeshParametrized(LShape(),
+                                        initial_space_mesh=mesh_space,
+                                        initial_time_mesh=mesh_time)
