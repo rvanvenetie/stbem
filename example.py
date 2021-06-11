@@ -12,7 +12,7 @@ import numpy as np
 from math import sqrt, fsum
 from hierarchical_error_estimator import HierarchicalErrorEstimator
 from mesh import MeshParametrized
-from parametrization import PiSquare, UnitSquare, LShape
+from parametrization import PiSquare, UnitSquare, LShape, Circle
 from initial_mesh import UnitSquareBoundaryRefined, LShapeBoundaryRefined, PiSquareBoundaryRefined
 import argparse
 from problems import problem_helper
@@ -39,7 +39,7 @@ if __name__ == '__main__':
                         help='problem (Smooth, Singular, Dirichlet)')
     parser.add_argument('--domain',
                         default='UnitSquare',
-                        help='domain (UnitSquare, PiSquare, LShape)')
+                        help='domain (UnitSquare, PiSquare, LShape, Circle)')
     parser.add_argument('--hierarchical',
                         default=True,
                         type=distutils.util.strtobool,
@@ -105,6 +105,8 @@ if __name__ == '__main__':
         elems = list(mesh.leaf_elements)
         for elem in elems:
             if elem.h_x > 1: mesh.refine_space(elem)
+    elif args.domain == 'Circle':
+        mesh = MeshParametrized(Circle())
     else:
         raise Exception('Invalid domain: {}'.format(args.domain))
 
@@ -266,6 +268,12 @@ if __name__ == '__main__':
             errs_weighted_l2.append(0)
             errs_unweighted_l2.append(0)
 
+        print(mesh.gmsh(use_gamma=True,
+                        element_data=np.sum(weighted_l2, axis=1)),
+              file=open(
+                  "./{}/weighted_l2_mesh_{}_{}_{}.gmsh".format(
+                      cache_dir, problem, N, md5), "w"))
+
         if args.sobolev:
             time_begin = time.time()
             sobolev = error_estimator.estimate_sobolev(elems,
@@ -280,6 +288,11 @@ if __name__ == '__main__':
                 time.time() - time_begin))
         else:
             errs_slo.append(0)
+
+        print(mesh.gmsh(use_gamma=True, element_data=np.sum(sobolev, axis=1)),
+              file=open(
+                  "./{}/sobolev_mesh_{}_{}_{}.gmsh".format(
+                      cache_dir, problem, N, md5), "w"))
 
         rates_unweighted_l2 = calc_rate(dofs, errs_unweighted_l2)
         rates_weighted_l2 = calc_rate(dofs, errs_weighted_l2)
@@ -324,15 +337,21 @@ if __name__ == '__main__':
         # Create graded mesh by hand for uniform meshes.
         elif args.grading and args.refinement == 'uniform':
             # This is a hack.
-            assert args.domain == 'UnitSquare'
+            gamma_len = int(mesh.gamma_space.gamma_length)
+
             h_t = 1 / 2**(k + 1)
             h_x = 1 / 2**((k + 1) / args.grading_sigma)
             print('Creating mesh with h_t = {} h_x = {}'.format(h_t, h_x))
-            N_x = 4 * round(1 / h_x)
+            N_x = gamma_len * round(1 / h_x)
             N_t = round(1 / h_t)
-            mesh_space = [4 * j / N_x for j in range(N_x + 1)]
+            mesh_space = [gamma_len * j / N_x for j in range(N_x + 1)]
             mesh_time = [j / N_t for j in range(N_t + 1)]
 
-            mesh = MeshParametrized(UnitSquare(),
-                                    initial_space_mesh=mesh_space,
-                                    initial_time_mesh=mesh_time)
+            if args.domain == 'UnitSquare':
+                mesh = MeshParametrized(UnitSquare(),
+                                        initial_space_mesh=mesh_space,
+                                        initial_time_mesh=mesh_time)
+            elif args.domain == 'LShape':
+                mesh = MeshParametrized(LShape(),
+                                        initial_space_mesh=mesh_space,
+                                        initial_time_mesh=mesh_time)
