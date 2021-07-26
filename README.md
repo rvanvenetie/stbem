@@ -1,4 +1,4 @@
-# An adaptive space-time boundary element method for the heat equation.
+# An adaptive space-time boundary element method for the heat equation
 This project provides an implementation of
 an adaptive space-time boundary element for the heat equation. The
 implementation is done in Python3 and uses multithreading.
