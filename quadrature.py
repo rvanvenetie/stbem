@@ -108,7 +108,7 @@ class QuadScheme2D:
         return self._mirror_y
 
     def integrate(self, f, a: float, b: float, c: float, d: float) -> float:
-        assert b - a > 1e-5 and d - c > 1e-5
+        assert b - a > 1e-7 and d - c > 1e-7
         x = np.array(
             [a + (b - a) * self.points[0], c + (d - c) * self.points[1]])
         fx = np.asarray(f(x))
