@@ -92,7 +92,6 @@ class ErrorEstimator:
 
         points = x_a + h_x * self.gauss.points
         for i, x_hat in enumerate(points):
-            x = gamma(x_hat)
 
             def slo(t: npt.ArrayLike) -> npt.ArrayLike:
                 return residual(t, np.repeat(x_hat, len(t)), gamma)
@@ -175,6 +174,7 @@ class ErrorEstimator:
             ips.append((space_nbr.glob_idx,
                         self.__integrate_h_1_4(residual, t_a, t_b, x_a, x_b,
                                                elem.gamma_space)))
+        assert len(ips) >= 1
         return math.fsum([val for elem, val in ips]), ips
 
     def weighted_l2(self, elem, residual):
