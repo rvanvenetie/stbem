@@ -651,3 +651,39 @@ def test_single_layer_pw_exact():
             if err > 1e-8:
                 print(elem_trial, elem_test, err)
             assert err < 1e-6
+
+
+def test_single_layer_evaluate_pw_exact():
+    for gamma in [UnitSquare(), LShape(), UnitInterval()]:
+        mesh = MeshParametrized(gamma)
+
+        # Randomly refine this mesh.
+        random.seed(5)
+        for _ in range(300):
+            elem = random.choice(list(mesh.leaf_elements))
+            mesh.refine_axis(elem, random.random() < 0.5)
+
+        SL = SingleLayerOperator(mesh)
+        elems = list(mesh.leaf_elements)
+        for j, elem_trial in enumerate(elems):
+            for t in [0, 0.01, 0.13, 0.25, 0.5, 0.75, 1]:
+                for x in [
+                        0, 0.5 * SL.gamma_len, SL.gamma_len,
+                        elem_trial.space_interval[0],
+                        elem_trial.space_interval[1],
+                        0.5 * (elem_trial.space_interval[0] +
+                               elem_trial.space_interval[1])
+                ]:
+                    if not np.all(
+                            mesh.gamma_space.eval(x) == elem_trial.gamma_space(
+                                x)):
+                        continue
+                    gamma = elem_trial.gamma_space
+                    a, b = elem_trial.space_interval
+
+                    val_exact = SL.evaluate_exact(elem_trial, t, x)
+                    val = SL.evaluate(elem_trial, t, x, gamma(x))
+                    if x < a or x > b:
+                        assert val == approx(val_exact, rel=1e-8)
+                    else:
+                        assert val == approx(val_exact, abs=0, rel=1e-8)

@@ -388,7 +388,7 @@ class SingleLayerOperator:
         # Return the quadrature result.
         return (x_b - x_a) * np.dot(self.log_scheme.weights, vec)
 
-    def evaluate_pw(self, elem_trial: Element, t: float, x: float) -> float:
+    def evaluate_exact(self, elem_trial: Element, t: float, x: float) -> float:
         """ Evaluates (V 1_trial)(t, x) for elem_trial lying on the 
             same pane as x. """
         if t <= elem_trial.time_interval[0]: return 0

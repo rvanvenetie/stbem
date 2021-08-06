@@ -209,7 +209,8 @@ class ErrorEstimator:
                 for j, elem_trial in enumerate(elems):
                     if t <= elem_trial.time_interval[0]: continue
                     if elem_trial.gamma_space is gamma:
-                        VPhi += Phi[j] * SL.evaluate_pw(elem_trial, t, x_hat)
+                        VPhi += Phi[j] * SL.evaluate_exact(
+                            elem_trial, t, x_hat)
                     else:
                         VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat,
                                                      x.reshape(2, 1))
@@ -314,4 +315,3 @@ class ErrorEstimator:
             print('Stored Sobolev to {}.'.format(cache_fn))
             np.save(cache_fn, sobolev)
         return sobolev
-
