@@ -120,7 +120,10 @@ if __name__ == '__main__':
     problem = '{}_{}'.format(args.domain, args.problem)
 
     # Create SL.
-    SL = SingleLayerOperator(mesh, cache_dir=cache_dir, pw_exact=True)
+    cache_dir = 'data_exact' if args.single_layer_exact else 'data'
+    SL = SingleLayerOperator(mesh,
+                             pw_exact=args.single_layer_exact,
+                             cache_dir=cache_dir)
 
     # Create M0 if u0 != 0 required.
     if 'u0' in data:
