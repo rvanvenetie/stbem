@@ -1,4 +1,5 @@
 import numpy as np
+from single_layer_exact import spacetime_integrated_kernel, spacetime_evaluated_1, spacetime_evaluated_2
 import cython
 import numpy.typing as npt
 import hashlib
@@ -10,6 +11,7 @@ from math import pi
 import random
 from parametrization import Circle, UnitSquare, LShape
 from mesh import Mesh, MeshParametrized
+from math import sqrt
 import itertools
 from scipy.special import expi, erf, expn, erfc
 from quadrature import log_quadrature_scheme, gauss_quadrature_scheme, ProductScheme2D, DuffyScheme2D
@@ -17,6 +19,8 @@ from mesh import Element
 
 FPI_INV = cython.declare(cython.double)
 FPI_INV = (4 * pi)**-1
+PI_SQRT = cython.declare(cython.double)
+PI_SQRT = math.sqrt(pi)
 
 
 def kernel(t, x):
@@ -105,7 +109,8 @@ def MP_SL_matrix_col(j: int) -> npt.ArrayLike:
 
 
 class SingleLayerOperator:
-    def __init__(self, mesh, quad_order=12, cache_dir=None):
+    def __init__(self, mesh, quad_order=12, pw_exact=False, cache_dir=None):
+        self.pw_exact = pw_exact
         self.gauss_scheme = gauss_quadrature_scheme(23)
         self.gauss_2d = ProductScheme2D(self.gauss_scheme)
         self.log_scheme = log_quadrature_scheme(quad_order, quad_order)
@@ -133,7 +138,7 @@ class SingleLayerOperator:
         """ Integrates a symmetric singular f over the square [a,b]x[c,d]. """
         h_x = b - a
         h_y = d - c
-        assert h_x > 1e-5 and h_y > 1e-5
+        assert h_x > 1e-8 and h_y > 1e-8
         assert (a < b and c < d)
         assert (a, b) <= (c, d)
 
@@ -153,6 +158,7 @@ class SingleLayerOperator:
                 return self.duff_log_log.mirror_x().integrate(
                     f, a, b, c, c + h_x) + self.__integrate(
                         f, a, b, c + h_x, d)
+        assert not math.isclose(b, c)
 
         # If the panels touch through in the glued boundary, split into even parts.
         if a == 0 and d == self.gamma_len and self.glue_space:
@@ -190,6 +196,7 @@ class SingleLayerOperator:
             assert b < d
             return self.__integrate(f, a, b, c, b) + self.__integrate(
                 f, a, b, b, d)
+        assert not math.isclose(a, c)
 
         # We have overlap, split this in two parts.
         assert a < c
@@ -205,6 +212,12 @@ class SingleLayerOperator:
         # If the test element lies below the trial element, we are done.
         if elem_test.time_interval[1] <= elem_trial.time_interval[0]:
             return 0
+
+        if self.pw_exact and elem_test.gamma_space is elem_trial.gamma_space:
+            return spacetime_integrated_kernel(*elem_test.time_interval,
+                                               *elem_trial.time_interval,
+                                               *elem_test.space_interval,
+                                               *elem_trial.space_interval)
 
         a, b = elem_test.time_interval
         c, d = elem_trial.time_interval
@@ -370,6 +383,41 @@ class SingleLayerOperator:
                                                                  (t - t_a))))
         # Return the quadrature result.
         return (x_b - x_a) * np.dot(self.log_scheme.weights, vec)
+
+    def evaluate_exact(self, elem_trial: Element, t: float, x: float) -> float:
+        """ Evaluates (V 1_trial)(t, x) for elem_trial lying on the 
+            same pane as x. """
+        if t <= elem_trial.time_interval[0]: return 0
+        a, b = elem_trial.space_interval
+        if x < a or x > b:
+            h = min(abs(a - x), abs(b - x))
+            k = max(abs(a - x), abs(b - x))
+            a, b = elem_trial.time_interval
+            if t <= b:
+                return -FPI_INV * (PI_SQRT * (2 * sqrt(
+                    (t - a))) * (erf(h / (2 * sqrt(
+                        (t - a)))) - erf(k / (2 * sqrt(
+                            (t - a))))) - h * expi(-(h**2 / (4 * (t - a)))) +
+                                   k * expi(-(k**2 / (4 * (t - a)))))
+            else:
+                return FPI_INV * (
+                    2 * PI_SQRT *
+                    (sqrt(t - a) *
+                     (-erf(h / (2 * sqrt(t - a))) + erf(k /
+                                                        (2 * sqrt(t - a)))) +
+                     sqrt(t - b) *
+                     (erf(h / (2 * sqrt(t - b))) - erf(k /
+                                                       (2 * sqrt(t - b))))) +
+                    h * expi(h**2 / (4 * (a - t))) - k * expi(k**2 /
+                                                              (4 * (a - t))) -
+                    h * expi(h**2 / (4 * (b - t))) + k * expi(k**2 /
+                                                              (4 * (b - t))))
+        elif a < x < b:
+            return spacetime_evaluated_1(
+                t, *elem_trial.time_interval, x - a) + spacetime_evaluated_1(
+                    t, *elem_trial.time_interval, b - x)
+        elif x == a or x == b:
+            return spacetime_evaluated_1(t, *elem_trial.time_interval, b - a)
 
     def evaluate_vector(self, t, x_hat):
         """ Returns the vector (V 1_elem)(t, gamma(x_hat)) for all elements in mesh. """

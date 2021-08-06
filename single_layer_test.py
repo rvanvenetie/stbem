@@ -487,15 +487,11 @@ def test_single_layer_evaluate_pw_polygon():
                         val = SL.evaluate(elem_trial, t, x, gamma(x))
                         assert val == approx(val_exact, abs=0, rel=1e-8)
 
-                    if x < a:
+                    if x < a or x > b:
+                        h = min(abs(a - x), abs(b - x))
+                        k = max(abs(a - x), abs(b - x))
                         val_exact = spacetime_evaluated_2(
-                            t, *elem_trial.time_interval, a - x, b - x)
-                        val = SL.evaluate(elem_trial, t, x, gamma(x))
-                        assert val == approx(val_exact, rel=1e-8)
-
-                    if x > b:
-                        val_exact = spacetime_evaluated_2(
-                            t, *elem_trial.time_interval, x - b, x - a)
+                            t, *elem_trial.time_interval, h, k)
                         val = SL.evaluate(elem_trial, t, x, gamma(x))
                         assert val == approx(val_exact, rel=1e-8)
 
@@ -626,3 +622,68 @@ def test_single_layer_refine_time():
                     print(elem_trial, elem_test, err, val, val_refined)
 
             assert val == approx(val_refined, abs=1e-50, rel=1e-3)
+
+
+def test_single_layer_pw_exact():
+    gamma = UnitSquare()
+    mesh = MeshParametrized(gamma)
+
+    # Randomly refine this mesh.
+    random.seed(5)
+    for _ in range(200):
+        elem = random.choice(list(mesh.leaf_elements))
+        mesh.refine_axis(elem, random.random() < 0.5)
+
+    # We can exactly integrate the kernel if the space part coincides.
+    SL_exact = SingleLayerOperator(mesh, pw_exact=True)
+    SL_quad = SingleLayerOperator(mesh, pw_exact=False)
+    elems = list(mesh.leaf_elements)
+    for i, elem_test in enumerate(elems):
+        for j, elem_trial in enumerate(elems):
+            if elem_test.gamma_space != elem_trial.gamma_space: continue
+            val_exact = SL_exact.bilform(elem_trial, elem_test)
+            val_quad = SL_quad.bilform(elem_trial, elem_test)
+            if val_exact == 0:
+                assert val_quad == 0
+                continue
+
+            err = abs((val_quad - val_exact) / val_exact)
+            if err > 1e-8:
+                print(elem_trial, elem_test, err)
+            assert err < 1e-6
+
+
+def test_single_layer_evaluate_pw_exact():
+    for gamma in [UnitSquare(), LShape(), UnitInterval()]:
+        mesh = MeshParametrized(gamma)
+
+        # Randomly refine this mesh.
+        random.seed(5)
+        for _ in range(300):
+            elem = random.choice(list(mesh.leaf_elements))
+            mesh.refine_axis(elem, random.random() < 0.5)
+
+        SL = SingleLayerOperator(mesh)
+        elems = list(mesh.leaf_elements)
+        for j, elem_trial in enumerate(elems):
+            for t in [0, 0.01, 0.13, 0.25, 0.5, 0.75, 1]:
+                for x in [
+                        0, 0.5 * SL.gamma_len, SL.gamma_len,
+                        elem_trial.space_interval[0],
+                        elem_trial.space_interval[1],
+                        0.5 * (elem_trial.space_interval[0] +
+                               elem_trial.space_interval[1])
+                ]:
+                    if not np.all(
+                            mesh.gamma_space.eval(x) == elem_trial.gamma_space(
+                                x)):
+                        continue
+                    gamma = elem_trial.gamma_space
+                    a, b = elem_trial.space_interval
+
+                    val_exact = SL.evaluate_exact(elem_trial, t, x)
+                    val = SL.evaluate(elem_trial, t, x, gamma(x))
+                    if x < a or x > b:
+                        assert val == approx(val_exact, rel=1e-8)
+                    else:
+                        assert val == approx(val_exact, abs=0, rel=1e-8)
