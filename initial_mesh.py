@@ -269,14 +269,3 @@ def LShapeBoundaryRefined(v0, v1):
     mesh = LShape()
     mesh.refine_msh_bdr(v0, v1)
     return mesh
-
-
-if __name__ == "__main__":
-    mesh = LShape()
-    for k in range(10):
-        for elem in list(mesh.leaf_elements):
-            if elem.vertices[0].xy == (0, 0):
-                mesh.refine(elem)
-                break
-        print(len(mesh.leaf_elements))
-    #print(mesh.gmsh())
