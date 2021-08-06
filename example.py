@@ -29,7 +29,6 @@ def calc_rate(dofs, errs):
 if __name__ == '__main__':
     N_procs = mp.cpu_count()
     mp.set_start_method('fork')
-    cache_dir = 'data_exact'
     print('Running parallel with {} threads.'.format(N_procs))
 
     parser = argparse.ArgumentParser(
@@ -41,7 +40,7 @@ if __name__ == '__main__':
                         default='UnitSquare',
                         help='domain (UnitSquare, PiSquare, LShape, Circle)')
     parser.add_argument('--hierarchical',
-                        default=True,
+                        default=False,
                         type=distutils.util.strtobool,
                         help='Calculate the hierarchical error estim')
     parser.add_argument('--h-h2',
@@ -79,6 +78,12 @@ if __name__ == '__main__':
     parser.add_argument('--estimator-quadrature',
                         default='5355',
                         help='Quadrature order used for the error estimator.')
+    parser.add_argument(
+        '--single-layer-exact',
+        default=False,
+        type=distutils.util.strtobool,
+        help=
+        "Avoids singular quadrature for some cases on a pw polygonal domain.")
     args = parser.parse_args()
 
     print('Arguments:')
@@ -243,7 +248,8 @@ if __name__ == '__main__':
             errs_hierch.append(0)
 
         # Calculate the weighted l2 + sobolev error of the residual.
-        residual = error_estimator.residual_pw(elems, Phi, SL, M0u0, g)
+        residual = error_estimator.residual(
+            elems, Phi, SL, M0u0, g, SL_exact_eval=args.single_layer_exact)
 
         if args.l2:
             time_begin = time.time()

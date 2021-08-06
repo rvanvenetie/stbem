@@ -193,8 +193,8 @@ class ErrorEstimator:
         #  h_t * h_x * h_x^(-1) in space.
         return sqrt(elem.h_t) * elem.h_x * res_l2, elem.h_t * res_l2
 
-    def residual_pw(self, elems, Phi, SL, M0u0=None, g=None):
-        """ Returns the residual function for a pw polygonal domain. """
+    def residual(self, elems, Phi, SL, M0u0=None, g=None, SL_exact_eval=False):
+        """ Returns the residual function. """
         SL._init_elems(elems)
 
         @cython.locals(VPhi=cython.double)
@@ -208,7 +208,7 @@ class ErrorEstimator:
                 VPhi = 0
                 for j, elem_trial in enumerate(elems):
                     if t <= elem_trial.time_interval[0]: continue
-                    if elem_trial.gamma_space is gamma:
+                    if SL_exact_eval and elem_trial.gamma_space is gamma:
                         VPhi += Phi[j] * SL.evaluate_exact(
                             elem_trial, t, x_hat)
                     else:
