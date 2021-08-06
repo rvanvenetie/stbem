@@ -82,8 +82,8 @@ if __name__ == '__main__':
         '--single-layer-exact',
         default=False,
         type=distutils.util.strtobool,
-        help="Evaluate the single layer exactly where possible."
-        " Avoids singular quadrature for some cases on a pw polygonal domain.")
+        help=
+        "Avoids singular quadrature for some cases on a pw polygonal domain.")
     args = parser.parse_args()
 
     print('Arguments:')
