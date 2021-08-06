@@ -95,8 +95,7 @@ class ErrorEstimator:
             x = gamma(x_hat)
 
             def slo(t: npt.ArrayLike) -> npt.ArrayLike:
-                return residual(t, np.repeat(x_hat, len(t)),
-                                np.repeat(x, len(t), axis=1))
+                return residual(t, np.repeat(x_hat, len(t)), gamma)
 
             val[i] = self.slobodeckij.seminorm_h_1_4(slo, t_a, t_b)
 
@@ -145,6 +144,7 @@ class ErrorEstimator:
             ips.append((time_nbr.glob_idx,
                         self.__integrate_h_1_2(residual, t_a, t_b, elem_left,
                                                elem_right)))
+        assert len(ips) >= 1
         return math.fsum([val for elem, val in ips]), ips
 
     def sobolev_time(self, elem, residual, nbrs_symmetry=False):
@@ -180,16 +180,17 @@ class ErrorEstimator:
     def weighted_l2(self, elem, residual):
         """ Residual takes arguments t, x_hat, x. """
         # Evaluate squared integral.
-        t_a, x_a = elem.time_interval[0], elem.space_interval[0]
+        t_a = elem.time_interval[0]
+        x_a = elem.space_interval[0]
         t = np.array(t_a + elem.h_t * self.gauss_2d.points[0])
         x_hat = np.array(x_a + elem.h_x * self.gauss_2d.points[1])
-        x = elem.gamma_space(x_hat)
 
-        res_sqr = np.asarray(residual(t, x_hat, x))**2
+        res_sqr = np.asarray(residual(t, x_hat, elem.gamma_space))**2
         res_l2 = np.dot(res_sqr, self.gauss_2d.weights)
 
-        # Return the weighted l2 norm.
-        return elem.h_x * sqrt(elem.h_t) * res_l2, elem.h_t * res_l2
+        #  h_t * h_x * h_t^(-1/2) in time.
+        #  h_t * h_x * h_x^(-1) in space.
+        return sqrt(elem.h_t) * elem.h_x * res_l2, elem.h_t * res_l2
 
     def residual(self, elems, Phi, SL, M0u0=None, g=None):
         """ Returns the residual function. """
@@ -197,8 +198,9 @@ class ErrorEstimator:
 
         @cython.locals(VPhi=cython.double)
         def residual(t: npt.ArrayLike, x_hat: npt.ArrayLike,
-                     x: npt.ArrayLike) -> npt.ArrayLike:
-            assert len(t) == len(x_hat) == x.shape[1]
+                     gamma: object) -> npt.ArrayLike:
+            assert len(t) == len(x_hat)
+            x = gamma(x_hat)
             result = np.zeros(len(t))
             for i, (t, x_hat, x) in enumerate(zip(t, x_hat, x.T)):
                 # Evaluate the SL for our trial function.
@@ -304,4 +306,3 @@ class ErrorEstimator:
             print('Stored Sobolev to {}.'.format(cache_fn))
             np.save(cache_fn, sobolev)
         return sobolev
-

@@ -63,8 +63,8 @@ class Slobodeckij:
             x = gamma(x_hat)
             xy = gamma(xy_hat)
             xy_sqr = np.sum((np.repeat(x, len(x_hat), axis=1) - xy)**2, axis=0)
-            fx = np.repeat(f(x_hat, x), len(x_hat))
-            fxy = np.asarray(f(xy_hat, xy))
+            fx = np.repeat(f(x_hat, gamma), len(x_hat))
+            fxy = np.asarray(f(xy_hat, gamma))
 
         return 2 * h**2 * np.dot((fx - fxy)**2 / xy_sqr, self.semi_1_2_weights)
 
@@ -86,7 +86,7 @@ class Slobodeckij:
             x = gamma_1(x_hat)
             y = gamma_2(y_hat)
             xy_sqr = np.sum((x - y)**2, axis=0)
-            return (f(x_hat, x) - f(y_hat, y))**2 / xy_sqr
+            return (f(x_hat, gamma_1) - f(y_hat, gamma_2))**2 / xy_sqr
 
         # Evaluate seminorm of f on [a_1, b_1] cross [a_2, b_2]
         result += 2 * self.semi_1_2_pw.integrate(slo, a_1, b_1, a_2, b_2)

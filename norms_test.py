@@ -142,7 +142,8 @@ def test_seminorm_h_1_2_gamma_smooth():
     rel_error = 1
     for N in range(1, 18, 2):
 
-        def f(x_hat, x):
+        def f(x_hat, gamma):
+            x = gamma(x_hat)
             return np.sin(np.pi * x[0]) * np.cos(np.pi * x[1])
 
         q_f = Slobodeckij(N).seminorm_h_1_2(f, 0, 1, gamma=gamma)
@@ -157,7 +158,8 @@ def test_seminorm_h_1_2_gamma_smooth():
     rel_error = 1
     for N in range(1, 18, 2):
 
-        def f(x_hat, x):
+        def f(x_hat, gamma):
+            x = gamma(x_hat)
             return np.sin(np.pi * x[0]) * np.cos(np.pi * x[1])
 
         q_f = Slobodeckij(N).seminorm_h_1_2(f, 0, 2, gamma=gamma)
@@ -172,7 +174,8 @@ def test_seminorm_h_1_2_gamma_smooth():
     rel_error = 2
     for N in range(1, 18, 2):
 
-        def f(x_hat, x):
+        def f(x_hat, gamma):
+            x = gamma(x_hat)
             return x[0] * np.cos(np.pi * x[1])
 
         q_f = Slobodeckij(N).seminorm_h_1_2(f, 0, 2, gamma=gamma)
@@ -202,7 +205,8 @@ def test_seminorm_h_1_2_gamma_pw():
     rel_error = 3
     for N in range(1, 19, 2):
 
-        def f(x_hat, x):
+        def f(x_hat, gamma):
+            x = gamma(x_hat)
             return x[0] * np.cos(np.pi * x[1])
 
         q_f = Slobodeckij(N).seminorm_h_1_2_pw(f, 0, 1, gamma_1, 1, 2, gamma_2)
@@ -216,7 +220,8 @@ def test_seminorm_h_1_2_gamma_pw():
     rel_error = 3
     for N in range(1, 21, 2):
 
-        def f(x_hat, x):
+        def f(x_hat, gamma):
+            x = gamma(x_hat)
             return np.cos(2 * np.pi * x[0]) * np.cos(np.pi * x[1])
 
         q_f = Slobodeckij(N).seminorm_h_1_2_pw(f, 0, 1, gamma_1, 1, 2, gamma_2)

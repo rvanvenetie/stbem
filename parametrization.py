@@ -104,6 +104,12 @@ class PiecewisePolygon(PiecewiseParametrization):
         for i in range(len(vertices) - 1):
             a, b = vertices[i], vertices[i + 1]
             gamma, length = line(a, b, x_start=pw_start[i])
+
+            assert np.all(
+                gamma(pw_start[i]).flatten() == np.array(vertices[i]))
+            assert np.all(
+                gamma(pw_start[i] + length).flatten() == np.array(vertices[i +
+                                                                           1]))
             pw_proj.append(line_project(a, b, x_start=pw_start[i]))
 
             pw_start.append(length + pw_start[i])
