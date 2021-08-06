@@ -336,7 +336,7 @@ if __name__ == '__main__':
             mesh.refine_grading(sigma=args.grading_sigma)
         # Create graded mesh by hand for uniform meshes.
         elif args.grading and args.refinement == 'uniform':
-            # This is a hack.
+            # This is a workaround.
             gamma_len = int(mesh.gamma_space.gamma_length)
 
             h_x = 1 / 2**(k + 1)

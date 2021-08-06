@@ -305,15 +305,3 @@ class ErrorEstimator:
             np.save(cache_fn, sobolev)
         return sobolev
 
-
-if __name__ == "__main__":
-
-    def residual(t, x_hat, x):
-        return t * x_hat
-
-    mesh = MeshParametrized(UnitSquare())
-    mesh.uniform_refine()
-    mesh.uniform_refine()
-    error_estimator = ErrorEstimator(mesh, N_poly=11)
-    for elem in mesh.leaf_elements:
-        print(elem, error_estimator.Sobolev(elem, residual)[1])

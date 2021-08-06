@@ -530,30 +530,3 @@ def Prolongate(vec_coarse, elems_coarse, elems_fine):
         i = elem_coarse_2_idx[elem_coarse]
         vec_fine[j] = vec_coarse[i]
     return vec_fine
-
-
-if __name__ == "__main__":
-    gamma = UnitSquare()
-    mesh = MeshParametrized(gamma)
-    np.random.seed(5)
-    for k in range(5):
-        eta = np.random.rand(len(mesh.leaf_elements), 2)
-        mesh.dorfler_refine_anisotropic(eta, 0.6)
-
-#    mesh = Mesh()
-#    mesh.uniform_refine_space()
-#    print(mesh.leaf_elements)
-#    asdf
-#    #random.seed(5)
-#    #for _ in range(20):
-#    #    elem = random.choice(list(mesh.leaf_elements))
-#    #    mesh.refine_axis(elem, random.random() < 0.5)
-#    mesh = MeshParametrized(Circle())
-#    #mesh.uniform_refine()
-#    #mesh.uniform_refine()
-#    #mesh.uniform_refine()
-#    #random.seed(5)
-#    #for _ in range(20):
-#    #    elem = random.choice(list(mesh.leaf_elements))
-#    #    mesh.refine_axis(elem, random.random() < 0.5)
-#    print(mesh.gmsh())
