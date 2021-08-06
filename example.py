@@ -29,7 +29,6 @@ def calc_rate(dofs, errs):
 if __name__ == '__main__':
     N_procs = mp.cpu_count()
     mp.set_start_method('fork')
-    cache_dir = 'data'
     print('Running parallel with {} threads.'.format(N_procs))
 
     parser = argparse.ArgumentParser(
@@ -79,6 +78,11 @@ if __name__ == '__main__':
     parser.add_argument('--estimator-quadrature',
                         default='5355',
                         help='Quadrature order used for the error estimator.')
+    parser.add_argument('--single-layer-exact',
+                        default=True,
+                        type=distutils.util.strtobool,
+                        help="Evaluate the single layer exactly. "
+                        "Possible for some cases in a pw polygonal domain.")
     args = parser.parse_args()
 
     print('Arguments:')
@@ -115,7 +119,10 @@ if __name__ == '__main__':
     problem = '{}_{}'.format(args.domain, args.problem)
 
     # Create SL.
-    SL = SingleLayerOperator(mesh, cache_dir=cache_dir)
+    cache_dir = 'data_exact' if args.single_layer_exact else 'data'
+    SL = SingleLayerOperator(mesh,
+                             pw_exact=args.single_layer_exact,
+                             cache_dir=cache_dir)
 
     # Create M0 if u0 != 0 required.
     if 'u0' in data:
@@ -243,7 +250,8 @@ if __name__ == '__main__':
             errs_hierch.append(0)
 
         # Calculate the weighted l2 + sobolev error of the residual.
-        residual = error_estimator.residual(elems, Phi, SL, M0u0, g)
+        residual = error_estimator.residual(
+            elems, Phi, SL, M0u0, g, SL_exact_eval=args.single_layer_exact)
 
         if args.l2:
             time_begin = time.time()

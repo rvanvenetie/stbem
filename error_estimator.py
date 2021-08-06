@@ -192,7 +192,7 @@ class ErrorEstimator:
         #  h_t * h_x * h_x^(-1) in space.
         return sqrt(elem.h_t) * elem.h_x * res_l2, elem.h_t * res_l2
 
-    def residual(self, elems, Phi, SL, M0u0=None, g=None):
+    def residual(self, elems, Phi, SL, M0u0=None, g=None, SL_exact_eval=False):
         """ Returns the residual function. """
         SL._init_elems(elems)
 
@@ -206,8 +206,13 @@ class ErrorEstimator:
                 # Evaluate the SL for our trial function.
                 VPhi = 0
                 for j, elem_trial in enumerate(elems):
-                    VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat,
-                                                 x.reshape(2, 1))
+                    if t <= elem_trial.time_interval[0]: continue
+                    if SL_exact_eval and elem_trial.gamma_space is gamma:
+                        VPhi += Phi[j] * SL.evaluate_exact(
+                            elem_trial, t, x_hat)
+                    else:
+                        VPhi += Phi[j] * SL.evaluate(elem_trial, t, x_hat,
+                                                     x.reshape(2, 1))
                 result[i] = VPhi
 
                 # Compare with rhs.
