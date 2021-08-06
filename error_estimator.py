@@ -174,7 +174,6 @@ class ErrorEstimator:
             ips.append((space_nbr.glob_idx,
                         self.__integrate_h_1_4(residual, t_a, t_b, x_a, x_b,
                                                elem.gamma_space)))
-
         assert len(ips) >= 1
         return math.fsum([val for elem, val in ips]), ips
 
