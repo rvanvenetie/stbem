@@ -40,7 +40,7 @@ if __name__ == '__main__':
                         default='UnitSquare',
                         help='domain (UnitSquare, PiSquare, LShape, Circle)')
     parser.add_argument('--hierarchical',
-                        default=True,
+                        default=False,
                         type=distutils.util.strtobool,
                         help='Calculate the hierarchical error estim')
     parser.add_argument('--h-h2',
@@ -78,11 +78,12 @@ if __name__ == '__main__':
     parser.add_argument('--estimator-quadrature',
                         default='5355',
                         help='Quadrature order used for the error estimator.')
-    parser.add_argument('--single-layer-exact',
-                        default=True,
-                        type=distutils.util.strtobool,
-                        help="Evaluate the single layer exactly. "
-                        "Possible for some cases in a pw polygonal domain.")
+    parser.add_argument(
+        '--single-layer-exact',
+        default=False,
+        type=distutils.util.strtobool,
+        help="Evaluate the single layer exactly where possible."
+        " Avoids singular quadrature for some cases on a pw polygonal domain.")
     args = parser.parse_args()
 
     print('Arguments:')
