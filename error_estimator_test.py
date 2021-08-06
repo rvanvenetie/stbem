@@ -14,7 +14,8 @@ def test_error_estimator_l2():
         elem = random.choice(list(mesh.leaf_elements))
         mesh.refine_axis(elem, random.random() < 0.5)
 
-    def residual(t, x_hat, x):
+    def residual(t, x_hat, gamma):
+        x = gamma(x_hat)
         return np.sqrt(t) * np.sin(x_hat)
 
     error_estim = ErrorEstimator(mesh)
@@ -37,7 +38,8 @@ def test_error_estimator_slo_unif():
     mesh.uniform_refine()
     elems = list(mesh.leaf_elements)
 
-    def residual(t, x_hat, x):
+    def residual(t, x_hat, gamma):
+        x = gamma(x_hat)
         return t * np.cos(np.pi * x[0]) * np.sin(np.pi * x[1])
 
     # Evaluate space norm around the corner.
@@ -83,7 +85,8 @@ def test_error_estimator_slo_unif():
     assert rel_error < 1e-13
     print('')
 
-    def residual(t, x_hat, x):
+    def residual(t, x_hat, gamma):
+        x = gamma(x_hat)
         return np.sin(np.pi * t) * x[0] * x[1]
 
     val_exact = 0.047727590109465093396
@@ -106,7 +109,8 @@ def test_error_estimator_slo():
         elem = random.choice(list(mesh.leaf_elements))
         mesh.refine_axis(elem, random.random() < 0.5)
 
-    def residual(t, x_hat, x):
+    def residual(t, x_hat, gamma):
+        x = gamma(x_hat)
         return t * x_hat
 
     error_estimator = ErrorEstimator(mesh, N_poly=5)
@@ -164,7 +168,8 @@ def test_error_estimator_symmetry():
 
     elems = list(mesh.leaf_elements)
 
-    def residual(t, x_hat, x):
+    def residual(t, x_hat, gamma):
+        x = gamma(x_hat)
         return t * np.cos(np.pi * x[0]) * np.sin(np.pi * x[1])
 
     error_estimator = ErrorEstimator(mesh, N_poly=5)
