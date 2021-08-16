@@ -1,3 +1,0 @@
-[flake8]
-ignore= E701, E731, W503, W504, E125, E265, E722, E501, E126, E741, E129, E225, W605
-max-line-length=80
