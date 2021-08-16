@@ -121,8 +121,12 @@ if __name__ == '__main__':
     data = problem_helper(args.problem, args.domain)
     problem = '{}_{}'.format(args.domain, args.problem)
 
+    # Create cache dir
+    cache_dir = 'data_exact' if args.single_layer_exact else 'datablabla'
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+
     # Create SL.
-    cache_dir = 'data_exact' if args.single_layer_exact else 'data'
     SL = SingleLayerOperator(mesh,
                              pw_exact=args.single_layer_exact,
                              cache_dir=cache_dir)

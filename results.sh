@@ -8,6 +8,7 @@ estimator='sobolev'
 theta=0.9
 estim_quadrature=5155
 
+mkdir -p results
 if [ $refinement = 'uniform' ]
 then
     python3 example.py --problem $problem --domain $domain --theta $theta --refinement $refinement --estimator $estimator --estimator-quadrature ${estim_quadrature} --h-h2 True --hierarchical False --grading False \
