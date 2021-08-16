@@ -1,5 +1,6 @@
 import numpy as np
-from parametrization import Circle, UnitSquare, LShape
+
+from .parametrization import Circle, LShape, UnitSquare
 
 
 def test_pw_param():

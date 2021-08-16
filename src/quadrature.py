@@ -1,6 +1,10 @@
 import numpy as np
-import quadrature_rules
-from quadrature_rules import log_quadrature_rule, log_log_quadrature_rule, sqrt_quadrature_rule, sqrtinv_quadrature_rule, gauss_sqrtinv_quadrature_rule, gauss_x_quadrature_rule, gauss_log_quadrature_rule
+
+from .quadrature_rules import (gauss_log_quadrature_rule,
+                               gauss_sqrtinv_quadrature_rule,
+                               gauss_x_quadrature_rule,
+                               log_log_quadrature_rule, log_quadrature_rule,
+                               sqrt_quadrature_rule, sqrtinv_quadrature_rule)
 
 
 def gauss_quadrature_scheme(N_poly):
@@ -210,7 +214,7 @@ class ProductScheme3D(QuadScheme3D):
 
 
 class DuffySchemeIdentical3D(QuadScheme3D):
-    """ Duffy scheme for unit cube having singularies of the form 
+    """ Duffy scheme for unit cube having singularies of the form
         log[(x − y)^2 + z^2]. """
     def __init__(self, scheme3d, symmetric_xy):
         assert isinstance(scheme3d, QuadScheme3D)
@@ -238,7 +242,7 @@ class DuffySchemeIdentical3D(QuadScheme3D):
 
 
 class DuffySchemeTouch3D(QuadScheme3D):
-    """ Duffy scheme for unit cube having singularies of the form 
+    """ Duffy scheme for unit cube having singularies of the form
         log[(x + y)^2 + z^2] or log[(x^2 + (y+z)^2. """
     def __init__(self, scheme3d):
         assert isinstance(scheme3d, QuadScheme3D)

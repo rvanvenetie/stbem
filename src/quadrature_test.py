@@ -1,11 +1,19 @@
-from quadrature import log_quadrature_scheme, log_log_quadrature_scheme, gauss_quadrature_scheme, sqrt_quadrature_scheme, gauss_sqrtinv_quadrature_scheme, ProductScheme2D, DuffyScheme2D, gauss_x_quadrature_scheme, DuffySchemeIdentical3D, ProductScheme3D, DuffySchemeTouch3D, QuadpyScheme2D
-import quadpy
-from parametrization import circle, UnitSquare
-from scipy.special import expi, exp1
-import quadrature_rules
 import itertools
-from pytest import approx
+
 import numpy as np
+import quadpy
+from pytest import approx
+from scipy.special import exp1, expi
+
+from .parametrization import UnitSquare, circle
+from .quadrature import (DuffyScheme2D, DuffySchemeIdentical3D,
+                         DuffySchemeTouch3D, ProductScheme2D, ProductScheme3D,
+                         QuadpyScheme2D, gauss_quadrature_scheme,
+                         gauss_sqrtinv_quadrature_scheme,
+                         gauss_x_quadrature_scheme, log_log_quadrature_scheme,
+                         log_quadrature_scheme, sqrt_quadrature_scheme)
+from .quadrature_rules import (LOG_LOG_QUAD_RULES, LOG_QUAD_RULES,
+                               SQRT_QUAD_RULES)
 
 
 def test_quadrature():
@@ -21,7 +29,7 @@ def test_quadrature():
 
 
 def test_log_quadrature():
-    for N_poly, N_poly_log in quadrature_rules.LOG_QUAD_RULES:
+    for N_poly, N_poly_log in LOG_QUAD_RULES:
         print(N_poly, N_poly_log)
         scheme = log_quadrature_scheme(N_poly, N_poly_log)
 
@@ -42,7 +50,7 @@ def test_log_quadrature():
 
 
 def test_log_log_quadrature():
-    for N_poly, N_poly_log in quadrature_rules.LOG_LOG_QUAD_RULES:
+    for N_poly, N_poly_log in LOG_LOG_QUAD_RULES:
         print(N_poly, N_poly_log)
         scheme = log_log_quadrature_scheme(N_poly, N_poly_log)
 
@@ -75,7 +83,7 @@ def test_log_log_quadrature():
 
 
 def test_sqrt_quadrature():
-    for N_poly, N_poly_sqrt in quadrature_rules.SQRT_QUAD_RULES:
+    for N_poly, N_poly_sqrt in SQRT_QUAD_RULES:
         scheme = sqrt_quadrature_scheme(N_poly, N_poly_sqrt)
 
         # First, check that it integrates polynomials exactly.
@@ -250,7 +258,6 @@ def test_singular_quadrature():
     rel_error = 1
     for n in range(1, 13):
         log_scheme = log_quadrature_scheme(n, n)
-        poly_scheme = gauss_quadrature_scheme(n * 2 + 1)
         prod_scheme = ProductScheme2D(log_scheme.mirror(), log_scheme)
         q_f = prod_scheme.integrate(f, 0, 1, 2, 3)
         q_f_24 = prod_scheme.integrate(f, 1, 2, 3, 4)
@@ -515,9 +522,6 @@ def test_singular_duffy_3d_touch():
         rel_error = new_rel_error
 
     assert rel_error < 1e-11
-
-    b = 0.25
-    G_time = lambda xy: 1. / (4 * np.pi) * exp1(xy / (4 * b))
 
     v0 = np.array([1., 1.]).reshape(-1, 1)
     v1 = np.array([2, 1.]).reshape(-1, 1)

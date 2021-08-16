@@ -1,14 +1,20 @@
+import random
+
+import numpy as np
+import quadpy
 from pytest import approx
 from scipy.special import exp1
-from quadrature import gauss_quadrature_scheme, log_quadrature_scheme
-import quadpy
-import random
-import numpy as np
-from parametrization import Circle, UnitSquare, LShape, UnitInterval
-from mesh import Mesh, MeshParametrized
-from single_layer import double_time_integrated_kernel, time_integrated_kernel, SingleLayerOperator
-from single_layer_exact import spacetime_integrated_kernel_1, spacetime_integrated_kernel_2, spacetime_integrated_kernel_3, spacetime_integrated_kernel_4, spacetime_evaluated_1, spacetime_evaluated_2
-import itertools
+
+from .mesh import MeshParametrized
+from .parametrization import Circle, LShape, UnitInterval, UnitSquare
+from .quadrature import gauss_quadrature_scheme
+from .single_layer import (SingleLayerOperator, double_time_integrated_kernel,
+                           time_integrated_kernel)
+from .single_layer_exact import (spacetime_evaluated_1, spacetime_evaluated_2,
+                                 spacetime_integrated_kernel_1,
+                                 spacetime_integrated_kernel_2,
+                                 spacetime_integrated_kernel_3,
+                                 spacetime_integrated_kernel_4)
 
 
 def test_time_integrated():
@@ -285,7 +291,6 @@ def test_single_layer_far():
         print(gamma)
         mesh = MeshParametrized(gamma)
         dim = 4
-        scheme_stroud = quadpy.cn.stroud_cn_7_1(dim)
         scheme_mcnamee = quadpy.cn.mcnamee_stenger_9b(dim)
 
         # Randomly refine this mesh.
@@ -314,7 +319,7 @@ def test_single_layer_far():
                                                      elem_test.space_interval,
                                                      elem_trial.time_interval,
                                                      elem_trial.space_interval)
-                #val_stroud = scheme_stroud.integrate(kernel, cube_points)
+                # val_stroud = scheme_stroud.integrate(kernel, cube_points)
                 val_mcnamee = scheme_mcnamee.integrate(kernel, cube_points)
                 val = SL.bilform(elem_trial, elem_test)
                 assert abs(val - val_mcnamee) / val < 1e-7
@@ -358,7 +363,6 @@ def test_single_layer_potential():
 def test_single_layer_evaluate():
     mesh = MeshParametrized(UnitSquare())
     SL = SingleLayerOperator(mesh)
-    elems = list(mesh.leaf_elements)
     vecs = np.zeros(shape=(4, 4))
 
     # Evaluate t = 1, x = 0, 1, 2, 3, and check symmetries.
@@ -377,7 +381,6 @@ def test_single_layer_evaluate():
     # Check circle.
     mesh = MeshParametrized(Circle())
     SL = SingleLayerOperator(mesh)
-    elems = list(mesh.leaf_elements)
     vecs = np.zeros(shape=(4, 4))
 
     # Evaluate t = 1, x = 0, 1, 2, 3, and check symmetries.
@@ -448,7 +451,6 @@ def test_single_layer_evaluate_disj():
 def test_single_layer_evaluate_pw_polygon():
     for gamma in [UnitSquare(), LShape(), UnitInterval()]:
         mesh = MeshParametrized(gamma)
-        scheme = quadpy.c2.get_good_scheme(21)
 
         # Randomly refine this mesh.
         random.seed(5)
@@ -548,7 +550,6 @@ def test_single_layer_refine():
         mesh_test.refine_axis(elem_test, random.random() < 0.5)
 
     elems_trial = list(mesh_trial.leaf_elements)
-    elems_test = list(mesh_test.leaf_elements)
 
     mesh_trial.uniform_refine()
     mesh_test.uniform_refine()

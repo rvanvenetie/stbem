@@ -1,7 +1,6 @@
 import numpy as np
-from initial_mesh import UnitSquare, LShape
-import random
-from collections import defaultdict
+
+from .initial_mesh import LShape, UnitSquare
 
 
 def test_uniform_refine():

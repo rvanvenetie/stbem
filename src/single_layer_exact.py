@@ -1,6 +1,7 @@
+from math import exp, fsum, pi, sqrt
+
 import numpy as np
-from math import sqrt, fsum, pi, exp
-from scipy.special import expi, erf, expn, erfc
+from scipy.special import erf, erfc, expi
 
 FPI_INV = (4 * pi)**-1
 HPI_INV = (1 / (192 * pi))
@@ -154,7 +155,7 @@ def fint_4(a: float, b: float, h: float, k: float, l: float) -> float:
 
 def spacetime_integrated_kernel_1(a: float, b: float, c: float, d: float,
                                   h: float) -> float:
-    """ Returns kernel integrated in time over [a,b] x [c, d], and in space 
+    """ Returns kernel integrated in time over [a,b] x [c, d], and in space
     over [0,h]^2.
     """
     assert a < b and c < d and h > 0
@@ -167,7 +168,7 @@ def spacetime_integrated_kernel_1(a: float, b: float, c: float, d: float,
 
 def spacetime_integrated_kernel_2(a: float, b: float, c: float, d: float,
                                   h: float, k: float) -> float:
-    """ Returns kernel integrated in time over [a,b] x [c, d], and in space 
+    """ Returns kernel integrated in time over [a,b] x [c, d], and in space
     over [-h,0] x [0,k]
     """
     assert a < b and c < d and h > 0
@@ -180,7 +181,7 @@ def spacetime_integrated_kernel_2(a: float, b: float, c: float, d: float,
 
 def spacetime_integrated_kernel_3(a: float, b: float, c: float, d: float,
                                   h: float, k: float) -> float:
-    """ Returns kernel integrated in time over [a,b] x [c, d], and in space 
+    """ Returns kernel integrated in time over [a,b] x [c, d], and in space
     over [0,h] x [0,k]
     """
     assert a < b and c < d and h > 0
@@ -193,7 +194,7 @@ def spacetime_integrated_kernel_3(a: float, b: float, c: float, d: float,
 
 def spacetime_integrated_kernel_4(a: float, b: float, c: float, d: float,
                                   h: float, k: float, l: float) -> float:
-    """ Returns kernel integrated in time over [a,b] x [c, d], and in space 
+    """ Returns kernel integrated in time over [a,b] x [c, d], and in space
     over [0,h] x [k,l] with 0 < h < k < l """
     assert a < b and c < d and h > 0
     f_bd = fint_4(b, d, h, k, l)

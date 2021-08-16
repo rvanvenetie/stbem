@@ -1,8 +1,9 @@
-import random
-import numpy as np
-from collections import OrderedDict
-from parametrization import Circle, UnitInterval, UnitSquare, LShape, PiecewiseParametrization
 import hashlib
+from collections import OrderedDict
+
+import numpy as np
+
+from .parametrization import PiecewiseParametrization
 
 
 class Vertex:
@@ -91,8 +92,8 @@ class Edge:
 
 class Element:
     def __init__(self, edges, levels, parent=None):
-        """ 
-        Edges are in order (v0 v1), (v1, v2), (v2, v3), (v3, v0) 
+        """
+        Edges are in order (v0 v1), (v1, v2), (v2, v3), (v3, v0)
         Vertices in order of (0, 0), (0, 1), (1, 1), (1, 0).  """
         self.edges = edges
         self.levels = levels
@@ -385,10 +386,10 @@ class Mesh:
             if cumsum >= eta_tot_sqr * theta**2:
                 break
         assert np.sqrt(cumsum) >= theta * np.sqrt(eta_tot_sqr)
-        print('Marked {} elements for time refinemenent.'.format(
-            len(marked[0]), N))
+        print('Marked {} elements for time refinemenent.'.format(len(
+            marked[0])))
         print('Marked {} elements for space refinemenent.'.format(
-            len(marked[1]), N))
+            len(marked[1])))
 
         # First refine in time.
         marked[0].sort(key=lambda elem: elem.level_time)
@@ -413,7 +414,7 @@ class Mesh:
             'Refinement added {} elements'.format(len(self.leaf_elements) - N))
 
     def refine_grading(self, sigma=2, K=4):
-        """ Refines the mesh such that h_t \eqsim h_x**sigma. """
+        """ Refines the mesh such that h_t eqsim h_x**sigma. """
         print('Refine grading with sigma = {}'.format(sigma))
         N = len(self.leaf_elements)
         marked_space = True

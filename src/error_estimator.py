@@ -1,17 +1,14 @@
-import random
-import cython
-import numpy.typing as npt
 import hashlib
-import multiprocessing as mp
-import time
 import math
+import multiprocessing as mp
 from math import sqrt
+
+import cython
 import numpy as np
-from quadrature import gauss_quadrature_scheme, DuffyScheme2D, ProductScheme2D, gauss_sqrtinv_quadrature_scheme
-from pprint import pprint
-from mesh import MeshParametrized
-from parametrization import UnitSquare
-from norms import Slobodeckij
+import numpy.typing as npt
+
+from .norms import Slobodeckij
+from .quadrature import ProductScheme2D, gauss_quadrature_scheme
 
 
 def MP_estim_l2(i):
@@ -103,7 +100,7 @@ class ErrorEstimator:
 
     def sobolev_space(self, elem, residual, nbrs_symmetry=False):
         """ This calculates the sobolev space error estimator.
-            
+
         That is, for every neighbour along a time axis, we evaluate
             |r|^2_{L(J cap J'; H^{1/2}(K cup K'))}.
         """
@@ -147,7 +144,7 @@ class ErrorEstimator:
         return math.fsum([val for elem, val in ips]), ips
 
     def sobolev_time(self, elem, residual, nbrs_symmetry=False):
-        """ This calculates the sobolev time error estimator. 
+        """ This calculates the sobolev time error estimator.
 
             That is, for every neighbour along a space axis, we evaluate
             |r|^2_{H^{1/4}(J cup J'; L_2(K cap  K')}.

@@ -1,10 +1,12 @@
-import random
 import multiprocessing as mp
-from pytest import approx
+import random
+
 import numpy as np
-from mesh import MeshParametrized
-from parametrization import UnitSquare
-from error_estimator import ErrorEstimator
+from pytest import approx
+
+from .error_estimator import ErrorEstimator
+from .mesh import MeshParametrized
+from .parametrization import UnitSquare
 
 
 def test_error_estimator_l2():
@@ -15,7 +17,6 @@ def test_error_estimator_l2():
         mesh.refine_axis(elem, random.random() < 0.5)
 
     def residual(t, x_hat, gamma):
-        x = gamma(x_hat)
         return np.sqrt(t) * np.sin(x_hat)
 
     error_estim = ErrorEstimator(mesh)
@@ -110,7 +111,6 @@ def test_error_estimator_slo():
         mesh.refine_axis(elem, random.random() < 0.5)
 
     def residual(t, x_hat, gamma):
-        x = gamma(x_hat)
         return t * x_hat
 
     error_estimator = ErrorEstimator(mesh, N_poly=5)
@@ -173,8 +173,6 @@ def test_error_estimator_symmetry():
         return t * np.cos(np.pi * x[0]) * np.sin(np.pi * x[1])
 
     error_estimator = ErrorEstimator(mesh, N_poly=5)
-    space_cache = {}
-    time_cache = {}
 
     mp.set_start_method('fork')
     errs = error_estimator.estimate_sobolev(elems, residual, use_mp=True)

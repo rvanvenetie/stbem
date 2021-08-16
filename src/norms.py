@@ -1,10 +1,9 @@
 import numpy as np
-from parametrization import line
-import quadrature_rules
-from parametrization import circle
-from scipy.special import expi, erf, expn, erfc
-from quadrature import log_quadrature_scheme, sqrt_quadrature_scheme, sqrtinv_quadrature_scheme, gauss_sqrtinv_quadrature_scheme, gauss_quadrature_scheme, ProductScheme2D, DuffyScheme2D, QuadScheme1D, gauss_x_quadrature_scheme, QuadScheme2D
-import quadpy
+
+from .quadrature import (ProductScheme2D, QuadScheme2D,
+                         gauss_quadrature_scheme,
+                         gauss_sqrtinv_quadrature_scheme,
+                         gauss_x_quadrature_scheme)
 
 
 class Slobodeckij:

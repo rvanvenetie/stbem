@@ -1,5 +1,6 @@
-from mesh import Vertex
 import numpy as np
+
+from .mesh import Vertex
 
 
 class DummyElement:

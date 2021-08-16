@@ -1,8 +1,10 @@
-from mesh import Mesh, MeshParametrized
-import numpy as np
-from itertools import product
 import random
-from parametrization import Circle, UnitSquare, LShape
+from itertools import product
+
+import numpy as np
+
+from .mesh import Mesh, MeshParametrized
+from .parametrization import Circle, LShape, UnitSquare
 
 
 def test_initial_mesh():
