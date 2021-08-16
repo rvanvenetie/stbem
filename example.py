@@ -122,7 +122,7 @@ if __name__ == '__main__':
     problem = '{}_{}'.format(args.domain, args.problem)
 
     # Create cache dir
-    cache_dir = 'data_exact' if args.single_layer_exact else 'datablabla'
+    cache_dir = 'data_exact' if args.single_layer_exact else 'data'
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
 
