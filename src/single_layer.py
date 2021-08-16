@@ -1,21 +1,19 @@
-import numpy as np
-from single_layer_exact import spacetime_integrated_kernel, spacetime_evaluated_1, spacetime_evaluated_2
-import cython
-import numpy.typing as npt
 import hashlib
-import time
-import multiprocessing as mp
-from pytest import approx
 import math
-from math import pi
-import random
-from parametrization import Circle, UnitSquare, LShape
-from mesh import Mesh, MeshParametrized
-from math import sqrt
-import itertools
-from scipy.special import expi, erf, expn, erfc
-from quadrature import log_quadrature_scheme, gauss_quadrature_scheme, ProductScheme2D, DuffyScheme2D
-from mesh import Element
+import multiprocessing as mp
+import time
+from math import pi, sqrt
+
+import cython
+import numpy as np
+import numpy.typing as npt
+from scipy.special import erf, expi
+
+from .mesh import Element
+from .quadrature import (DuffyScheme2D, ProductScheme2D,
+                         gauss_quadrature_scheme, log_quadrature_scheme)
+from .single_layer_exact import (spacetime_evaluated_1,
+                                 spacetime_integrated_kernel)
 
 FPI_INV = cython.declare(cython.double)
 FPI_INV = (4 * pi)**-1
@@ -385,7 +383,7 @@ class SingleLayerOperator:
         return (x_b - x_a) * np.dot(self.log_scheme.weights, vec)
 
     def evaluate_exact(self, elem_trial: Element, t: float, x: float) -> float:
-        """ Evaluates (V 1_trial)(t, x) for elem_trial lying on the 
+        """ Evaluates (V 1_trial)(t, x) for elem_trial lying on the
             same pane as x. """
         if t <= elem_trial.time_interval[0]: return 0
         a, b = elem_trial.space_interval

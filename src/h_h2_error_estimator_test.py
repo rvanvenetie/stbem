@@ -1,9 +1,11 @@
-from h_h2_error_estimator import HH2ErrorEstimator
-import numpy as np
-from single_layer import SingleLayerOperator
 import random
-from parametrization import Circle, UnitSquare, LShape
-from mesh import Mesh, MeshParametrized
+
+import numpy as np
+
+from .h_h2_error_estimator import HH2ErrorEstimator
+from .mesh import MeshParametrized
+from .parametrization import UnitSquare
+from .single_layer import SingleLayerOperator
 
 
 def test_error_estimator():

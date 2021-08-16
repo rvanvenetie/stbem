@@ -1,6 +1,7 @@
 import numpy as np
 import quadpy
-import quadrature
+
+from .quadrature import ProductScheme2D, gauss_quadrature_scheme
 
 
 # Simple parametrizations.
@@ -82,6 +83,7 @@ class PiecewiseParametrization:
 
     def plot(self):
         import matplotlib.pyplot as plt
+
         # Evaluate gamma on a set of points and plot.
         pts = self.eval(
             np.linspace(0, self.gamma_length,
@@ -153,8 +155,7 @@ class UnitSquare(PiecewisePolygon):
 
     def integrator(self, poly_order):
         #scheme = quadpy.c2.product(quadpy.c1.gauss_legendre(poly_order))
-        scheme = quadrature.ProductScheme2D(
-            quadrature.gauss_quadrature_scheme(poly_order))
+        scheme = ProductScheme2D(gauss_quadrature_scheme(poly_order))
         return lambda f: scheme.integrate(f, 0, 1, 0, 1)
         #scheme = quadpy.c2.get_good_scheme(poly_order)
         #return lambda f: scheme.integrate(
@@ -176,8 +177,7 @@ class PiSquare(PiecewisePolygon):
 
     def integrator(self, poly_order):
         #scheme = quadpy.c2.product(quadpy.c1.gauss_legendre(poly_order))
-        scheme = quadrature.ProductScheme2D(
-            quadrature.gauss_quadrature_scheme(poly_order))
+        scheme = ProductScheme2D(gauss_quadrature_scheme(poly_order))
         return lambda f: scheme.integrate(f, 0, np.pi, 0, np.pi)
         #scheme = quadpy.c2.get_good_scheme(poly_order)
         #return lambda f: scheme.integrate(
@@ -203,8 +203,7 @@ class LShape(PiecewisePolygon):
         return "LShape"
 
     def integrator(self, poly_order):
-        scheme = quadrature.ProductScheme2D(
-            quadrature.gauss_quadrature_scheme(poly_order))
+        scheme = ProductScheme2D(gauss_quadrature_scheme(poly_order))
         return lambda f: scheme.integrate(f, -1, 0, 0, 1) + scheme.integrate(
             f, 0, 1, 0, 1) + scheme.integrate(f, 0, 1, -1, 0)
 

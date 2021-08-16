@@ -1,12 +1,15 @@
-from mesh import Mesh, MeshParametrized
-from quadrature import *
-from initial_mesh import UnitSquareBoundaryRefined, LShapeBoundaryRefined
 import random
-from scipy.special import expi, erf, expn, erfc
-from pytest import approx
-from parametrization import Circle, UnitSquare, LShape
+
 import numpy as np
-from initial_potential import InitialOperator
+from pytest import approx
+from scipy.special import erf
+
+from .initial_mesh import LShapeBoundaryRefined, UnitSquareBoundaryRefined
+from .initial_potential import InitialOperator
+from .mesh import MeshParametrized
+from .parametrization import Circle, LShape, UnitSquare
+from .quadrature import (ProductScheme2D, gauss_quadrature_scheme,
+                         log_quadrature_scheme)
 
 
 def test_initial_potential_circle():

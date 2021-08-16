@@ -1,8 +1,8 @@
-from hierarchical_error_estimator import DummyElement
 import time
-from mesh import Vertex
-from mesh import Prolongate
+
 import numpy as np
+
+from .hierarchical_error_estimator import DummyElement
 
 
 class HH2ErrorEstimator:
@@ -23,7 +23,7 @@ class HH2ErrorEstimator:
         elems_fine = [
             child for children in elem_2_children for child in children
         ]
-        elem_2_idx_fine = {k: v for v, k in enumerate(elems_fine)}
+        #elem_2_idx_fine = {k: v for v, k in enumerate(elems_fine)}
 
         # Evaluate SL matrix on the fine mesh.
         mat_fine = self.SL.bilform_matrix(elems_test=elems_fine,

@@ -1,7 +1,7 @@
-from norms import Slobodeckij
-from quadrature import *
-from parametrization import line
 import numpy as np
+
+from .norms import Slobodeckij
+from .parametrization import line
 
 
 def test_seminorm_h_1_4():
@@ -74,7 +74,7 @@ def test_seminorm_h_1_2():
 
     #assert rel_error < 1e-13
 
-    ## Non smooth function.
+    # Non smooth function.
     #val_exact = 1.0679586722084124843
     #rel_error = 1
     #for N in range(1, 21, 2):

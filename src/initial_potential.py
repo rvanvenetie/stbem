@@ -1,16 +1,15 @@
-from mesh import Mesh, MeshParametrized, Element
-import multiprocessing as mp
 import hashlib
-import time
-import os
 import math
-from initial_mesh import UnitSquareBoundaryRefined
-import initial_mesh
-import quadrature_rules
-from scipy.special import exp1
-from quadrature import gauss_quadrature_scheme, log_quadrature_scheme, sqrt_quadrature_scheme, ProductScheme2D, ProductScheme3D, DuffySchemeIdentical3D, DuffySchemeTouch3D
-from parametrization import Circle, UnitSquare, LShape
+import multiprocessing as mp
+import time
+
 import numpy as np
+from scipy.special import exp1
+
+from .mesh import Element
+from .quadrature import (DuffySchemeIdentical3D, DuffySchemeTouch3D,
+                         ProductScheme2D, ProductScheme3D,
+                         gauss_quadrature_scheme, log_quadrature_scheme)
 
 FPI_INV = (4 * np.pi)**-1
 
@@ -87,7 +86,6 @@ class InitialOperator:
 
         id_bdr = 0
         touch_bdr = 0
-        result = 0
         ips = []
         for elem in initial_mesh.leaf_elements:
             # Check whether this element has an identical bdr,

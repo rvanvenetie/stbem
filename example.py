@@ -1,22 +1,25 @@
+import argparse
+import distutils.util
+import hashlib
 import multiprocessing as mp
 import os
-import distutils.util
-from h_h2_error_estimator import HH2ErrorEstimator
-from quadrature import gauss_quadrature_scheme, ProductScheme2D
-from single_layer import SingleLayerOperator
-from initial_potential import InitialOperator
-from error_estimator import ErrorEstimator
-import hashlib
 import time
-import numpy as np
-from math import sqrt, fsum
-from hierarchical_error_estimator import HierarchicalErrorEstimator
-from mesh import MeshParametrized
-from parametrization import PiSquare, UnitSquare, LShape, Circle
-from initial_mesh import UnitSquareBoundaryRefined, LShapeBoundaryRefined, PiSquareBoundaryRefined
-import argparse
-from problems import problem_helper
+from math import fsum, sqrt
 from pprint import pprint
+
+import numpy as np
+
+from problems import problem_helper
+from src.error_estimator import ErrorEstimator
+from src.h_h2_error_estimator import HH2ErrorEstimator
+from src.hierarchical_error_estimator import HierarchicalErrorEstimator
+from src.initial_mesh import (LShapeBoundaryRefined, PiSquareBoundaryRefined,
+                              UnitSquareBoundaryRefined)
+from src.initial_potential import InitialOperator
+from src.mesh import MeshParametrized
+from src.parametrization import Circle, LShape, PiSquare, UnitSquare
+from src.quadrature import ProductScheme2D, gauss_quadrature_scheme
+from src.single_layer import SingleLayerOperator
 
 
 def calc_rate(dofs, errs):
@@ -78,12 +81,11 @@ if __name__ == '__main__':
     parser.add_argument('--estimator-quadrature',
                         default='5355',
                         help='Quadrature order used for the error estimator.')
-    parser.add_argument(
-        '--single-layer-exact',
-        default=False,
-        type=distutils.util.strtobool,
-        help=
-        "Avoids singular quadrature for some cases on a pw polygonal domain.")
+    parser.add_argument('--single-layer-exact',
+                        default=False,
+                        type=distutils.util.strtobool,
+                        help="Avoids singular quadrature"
+                        " for some cases on a pw polygonal domain.")
     args = parser.parse_args()
 
     print('Arguments:')
@@ -322,7 +324,7 @@ if __name__ == '__main__':
         # Find the correct estimator for marking.
         if args.estimator == 'hierarchical':
             assert args.hierarchical
-            eta = hierarchical
+            eta = hierarch
         elif args.estimator == 'sobolev':
             assert args.sobolev
             eta = sobolev
