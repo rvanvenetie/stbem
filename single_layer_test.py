@@ -588,7 +588,7 @@ def test_single_layer_refine_time():
     # Randomly refine the meshes
     random.seed(5)
 
-    for _ in range(20):
+    for _ in range(10):
         elem_trial = [
             elem for elem in mesh_trial.leaf_elements
             if elem.time_interval[0] == 0. and elem.space_interval[0] == 2.
