@@ -36,9 +36,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
         description='Solve parabolic equation using ngsolve.')
-    parser.add_argument('--problem',
-                        default='Smooth',
-                        help='problem (Smooth, Singular, Dirichlet)')
+    parser.add_argument(
+        '--problem',
+        default='Smooth',
+        help='problem (Smooth, Singular, Dirichlet, MildSingular)')
     parser.add_argument('--domain',
                         default='UnitSquare',
                         help='domain (UnitSquare, PiSquare, LShape, Circle)')
@@ -122,7 +123,7 @@ if __name__ == '__main__':
     problem = '{}_{}'.format(args.domain, args.problem)
 
     # Create cache dir
-    cache_dir = 'data_exact' if args.single_layer_exact else 'datablabla'
+    cache_dir = 'data_exact' if args.single_layer_exact else 'data'
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
 
