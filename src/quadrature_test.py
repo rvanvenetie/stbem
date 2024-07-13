@@ -1,7 +1,6 @@
 import itertools
 
 import numpy as np
-import quadpy
 from pytest import approx
 from scipy.special import exp1, expi
 
@@ -143,6 +142,7 @@ def test_product_quadrature():
 
 
 def test_quadpy_schemes():
+    import quadpy
     for poly in range(11):
         quad_scheme = quadpy.c2.get_good_scheme(poly)
         scheme = QuadpyScheme2D(quad_scheme)

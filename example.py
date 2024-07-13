@@ -1,5 +1,4 @@
 import argparse
-import distutils.util
 import hashlib
 import multiprocessing as mp
 import os
@@ -45,19 +44,19 @@ if __name__ == '__main__':
                         help='domain (UnitSquare, PiSquare, LShape, Circle)')
     parser.add_argument('--hierarchical',
                         default=False,
-                        type=distutils.util.strtobool,
+                        action=argparse.BooleanOptionalAction,
                         help='Calculate the hierarchical error estim')
     parser.add_argument('--h-h2',
                         default=True,
-                        type=distutils.util.strtobool,
+                        action=argparse.BooleanOptionalAction,
                         help='Calculate the h-h2 error estim')
     parser.add_argument('--sobolev',
                         default=True,
-                        type=distutils.util.strtobool,
+                        action=argparse.BooleanOptionalAction,
                         help='Calculate the sobolev error estim')
     parser.add_argument('--l2',
                         default=True,
-                        type=distutils.util.strtobool,
+                        action=argparse.BooleanOptionalAction,
                         help='Calculate the l2 error estim')
     parser.add_argument('--refinement',
                         default='uniform',
@@ -65,7 +64,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--grading',
         default=False,
-        type=distutils.util.strtobool,
+        action=argparse.BooleanOptionalAction,
         help='Assert that the mesh satisfies a certain grading')
     parser.add_argument('--grading-sigma',
                         default=2,
@@ -84,7 +83,7 @@ if __name__ == '__main__':
                         help='Quadrature order used for the error estimator.')
     parser.add_argument('--single-layer-exact',
                         default=False,
-                        type=distutils.util.strtobool,
+                        action=argparse.BooleanOptionalAction,
                         help="Avoids singular quadrature"
                         " for some cases on a pw polygonal domain.")
     args = parser.parse_args()

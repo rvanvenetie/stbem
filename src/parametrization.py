@@ -1,5 +1,4 @@
 import numpy as np
-import quadpy
 
 from .quadrature import ProductScheme2D, gauss_quadrature_scheme
 
@@ -131,6 +130,7 @@ class Circle(PiecewiseParametrization):
         super().__init__(pw_start=pw_start, pw_gamma=pw_gamma)
 
     def integrator(self, poly_order):
+        import quadpy
         #scheme = quadpy.s2.get_good_scheme(poly_order)
         assert (poly_order % 2 != 0)
         n = (poly_order + 1) // 2
